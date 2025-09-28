@@ -1,0 +1,99 @@
+1. Get the application URL by running these commands:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "motion-tools.fullname" . }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "motion-tools.fullname" . }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "motion-tools.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ .Values.service.port }}
+{{- else if contains "ClusterIP" .Values.service.type }}
+  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "motion-tools.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+  echo "Visit http://127.0.0.1:8080 to use your application"
+  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT
+{{- end }}
+
+2. Initial Setup:
+   - Access the application using the URL above
+   - The installation wizard will guide you through the initial configuration
+   - You'll need to create your first consultation and admin account
+
+3. Database Connection:
+{{- if .Values.mariadb.enabled }}
+   - Database is deployed as part of this release
+   - Database name: {{ .Values.mariadb.auth.database }}
+   - Database user: {{ .Values.mariadb.auth.username }}
+   - Database host: {{ include "motion-tools.databaseHost" . }}
+{{- else }}
+   - Using external database
+   - Database host: {{ .Values.externalDatabase.host }}
+   - Database name: {{ .Values.externalDatabase.database }}
+{{- end }}
+
+4. SMTP Configuration:
+{{- if .Values.motionTools.smtp.enabled }}
+   - SMTP is configured with:
+     Host: {{ .Values.motionTools.smtp.host }}
+     Port: {{ .Values.motionTools.smtp.port }}
+     From: {{ .Values.motionTools.smtp.from }}
+{{- else }}
+   - SMTP is not configured. Email functionality will be disabled.
+{{- end }}
+
+5. Persistent Storage:
+{{- if .Values.persistence.enabled }}
+   - Persistent volume is enabled with {{ .Values.persistence.size }} of storage
+   - Data will be preserved across pod restarts
+{{- else }}
+   ⚠️  WARNING: Persistence is disabled. Data will be lost if the pod is restarted!
+   Consider enabling persistence for production deployments.
+{{- end }}
+
+6. Additional Features:
+{{- if .Values.motionTools.valkey.enabled }}
+   - Valkey caching is enabled for improved performance (Redis-compatible)
+{{- end }}
+{{- if .Values.motionTools.imageMagick.enabled }}
+   - ImageMagick is enabled for image processing
+{{- end }}
+{{- if .Values.motionTools.backgroundJobs.enabled }}
+   - Background job processing is enabled
+{{- end }}
+{{- if .Values.motionTools.liveServer.enabled }}
+   - Live server integration is enabled
+{{- end }}
+
+7. Security Considerations:
+{{- if .Values.debug }}
+   ⚠️  WARNING: Debug mode is enabled. Disable this in production!
+{{- end }}
+{{- if not .Values.ingress.tls }}
+   ⚠️  Consider enabling TLS/HTTPS for production deployments
+{{- end }}
+
+8. Monitoring:
+   - Check application logs: kubectl logs -f deployment/{{ include "motion-tools.fullname" . }} -n {{ .Release.Namespace }}
+   - Check pod status: kubectl get pods -n {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "motion-tools.name" . }}"
+
+9. Scaling:
+{{- if .Values.autoscaling.enabled }}
+   - Autoscaling is enabled ({{ .Values.autoscaling.minReplicas }} to {{ .Values.autoscaling.maxReplicas }} replicas)
+   - Scaling based on: CPU {{ .Values.autoscaling.targetCPUUtilizationPercentage }}%{{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}, Memory {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}%{{- end }}
+{{- else }}
+   - Manual scaling: kubectl scale deployment/{{ include "motion-tools.fullname" . }} --replicas=X -n {{ .Release.Namespace }}
+{{- end }}
+
+10. Support:
+    - Documentation: https://motion.tools
+    - GitHub: https://github.com/CatoTH/antragsgruen
+    - For issues with this Helm chart, please check the chart repository
+
+Happy Motion Management! 🚀

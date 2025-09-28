@@ -1,0 +1,457 @@
+# Example values for motion-tools Helm chart
+# This file contains example configurations for common deployment scenarios
+
+# =============================================================================
+# SCENARIO 1: Development/Testing Environment
+# =============================================================================
+# Minimal configuration for development or testing
+# - Single replica
+# - No persistence
+# - Basic resources
+# - Debug mode enabled
+
+development:
+  replicaCount: 1
+  
+  image:
+    pullPolicy: Always
+    tag: "latest"
+  
+  persistence:
+    enabled: false
+  
+  motionTools:
+    apacheFqdn: "motion-dev.local"
+    smtp:
+      enabled: false
+  
+  mariadb:
+    auth:
+      rootPassword: "dev-root-password"
+      password: "dev-password"
+    primary:
+      persistence:
+        enabled: false
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  
+  debug: true
+
+# =============================================================================
+# SCENARIO 2: Small Production Deployment
+# =============================================================================
+# Configuration for small organizations or projects
+# - 2 replicas for redundancy
+# - Persistent storage
+# - Ingress with TLS
+# - SMTP configured
+
+small-production:
+  replicaCount: 2
+  
+  image:
+    tag: "v4.15.3"  # Use specific version in production
+  
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    hosts:
+      - host: motion.example.org
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: motion-tls
+        hosts:
+          - motion.example.org
+  
+  motionTools:
+    apacheFqdn: "motion.example.org"
+    timezone: "Europe/Berlin"
+    
+    smtp:
+      enabled: true
+      host: "smtp.mailgun.org"
+      port: 587
+      from: "noreply@example.org"
+      user: "postmaster@mg.example.org"
+      password: "your-smtp-password"  # Use existingSecret in production
+      # existingSecret: "smtp-credentials"
+      # secretKey: "password"
+    
+    php:
+      memoryLimit: "512M"
+      maxExecutionTime: "300"
+      postMaxSize: "50M"
+      uploadMaxFilesize: "50M"
+  
+  persistence:
+    enabled: true
+    size: 20Gi
+    accessMode: ReadWriteOnce
+  
+  mariadb:
+    auth:
+      rootPassword: "secure-root-password"
+      password: "secure-db-password"
+      # existingSecret: "db-credentials"  # Recommended for production
+    primary:
+      persistence:
+        enabled: true
+        size: 10Gi
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+# =============================================================================
+# SCENARIO 3: Large Production with High Availability
+# =============================================================================
+# Enterprise-grade configuration
+# - Autoscaling enabled
+# - External database
+# - Valkey caching (Redis-compatible)
+# - Network policies
+# - Pod disruption budget
+
+enterprise:
+  replicaCount: 3
+  
+  image:
+    tag: "v4.15.3"
+    pullPolicy: IfNotPresent
+  
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+      nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+      nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+      nginx.ingress.kubernetes.io/rate-limit: "100"
+    hosts:
+      - host: motion.enterprise.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: motion-enterprise-tls
+        hosts:
+          - motion.enterprise.com
+  
+  motionTools:
+    apacheFqdn: "motion.enterprise.com"
+    timezone: "UTC"
+    
+    smtp:
+      enabled: true
+      host: "smtp-relay.enterprise.com"
+      port: 587
+      from: "motion@enterprise.com"
+      user: "motion@enterprise.com"
+      existingSecret: "smtp-credentials"
+      secretKey: "password"
+    
+    valkey:
+      enabled: true
+      host: "valkey-master.valkey.svc.cluster.local"
+      port: 6379
+      database: 0
+      existingSecret: "valkey-credentials"
+      secretKey: "password"
+    
+    php:
+      memoryLimit: "1G"
+      maxExecutionTime: "600"
+      postMaxSize: "100M"
+      uploadMaxFilesize: "100M"
+    
+    imageMagick:
+      enabled: true
+      path: "/usr/bin/convert"
+    
+    backgroundJobs:
+      enabled: true
+      notifications: true
+      healthCheckKey: "generated-health-check-key"
+  
+  persistence:
+    enabled: true
+    size: 100Gi
+    storageClass: "fast-ssd"
+    accessMode: ReadWriteMany  # For multi-replica access
+  
+  # Using external database
+  mariadb:
+    enabled: false
+  
+  externalDatabase:
+    host: "mysql-cluster.database.svc.cluster.local"
+    port: 3306
+    database: "motiontools_prod"
+    username: "motiontools"
+    existingSecret: "db-credentials"
+    userPasswordKey: "password"
+  
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  nodeSelector:
+    node-role.kubernetes.io/worker: "true"
+    workload-type: "web"
+  
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                    - motion-tools
+            topologyKey: kubernetes.io/hostname
+  
+  networkPolicy:
+    enabled: true
+    policyTypes:
+      - Ingress
+      - Egress
+  
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 2
+  
+  priorityClassName: "high-priority"
+
+# =============================================================================
+# SCENARIO 4: Multi-Site Configuration
+# =============================================================================
+# Configuration for hosting multiple motion tool instances
+# - Multiple replicas
+# - Large storage
+# - Advanced caching
+
+multisite:
+  replicaCount: 5
+  
+  image:
+    tag: "v4.15.3"
+  
+  motionTools:
+    apacheFqdn: "*.motion-platform.com"
+    
+    # Multisite specific configuration would be added here
+    extraEnvVars:
+      - name: MULTISITE_MODE
+        value: "true"
+      - name: SITE_SUBDOMAIN
+        value: "true"
+    
+    valkey:
+      enabled: true
+      host: "valkey-cluster.valkey.svc.cluster.local"
+      port: 6379
+      database: 0
+      password: "valkey-password"
+    
+    php:
+      memoryLimit: "2G"
+      maxExecutionTime: "900"
+  
+  persistence:
+    enabled: true
+    size: 500Gi
+    storageClass: "network-storage"
+    accessMode: ReadWriteMany
+  
+  resources:
+    limits:
+      cpu: 4000m
+      memory: 4Gi
+    requests:
+      cpu: 1000m
+      memory: 2Gi
+
+# =============================================================================
+# SCENARIO 5: Convention/Conference Setup
+# =============================================================================
+# Optimized for large events with many concurrent users
+# - High resource allocation
+# - Live server integration
+# - Enhanced PDF rendering
+
+conference:
+  replicaCount: 10
+  
+  image:
+    tag: "v4.15.3"
+  
+  motionTools:
+    apacheFqdn: "conference2024.example.org"
+    
+    # Enable all performance features
+    valkey:
+      enabled: true
+      host: "valkey-ha.valkey.svc.cluster.local"
+      port: 6379
+    
+    # Advanced PDF rendering for documents
+    pdfRendering:
+      engine: "weasyprint"
+      weasyprintPath: "/usr/bin/weasyprint"
+    
+    # Live updates for speaking lists
+    liveServer:
+      enabled: true
+      installationId: "conference2024"
+      wsUri: "wss://live.conference2024.example.org/websocket"
+      stompJsUri: "https://live.conference2024.example.org/stomp.umd.min.js"
+      rabbitMqUri: "https://rabbitmq.conference2024.example.org"
+      rabbitMqExchangeName: "conference-exchange"
+      rabbitMqUsername: "conference"
+      rabbitMqExistingSecret: "rabbitmq-credentials"
+    
+    backgroundJobs:
+      enabled: true
+      notifications: true
+    
+    php:
+      memoryLimit: "4G"
+      maxExecutionTime: "1800"
+      postMaxSize: "200M"
+      uploadMaxFilesize: "200M"
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 5
+    maxReplicas: 50
+    targetCPUUtilizationPercentage: 60
+    behavior:
+      scaleUp:
+        stabilizationWindowSeconds: 60
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 60
+          - type: Pods
+            value: 5
+            periodSeconds: 60
+        selectPolicy: Max
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        policies:
+          - type: Percent
+            value: 10
+            periodSeconds: 60
+          - type: Pods
+            value: 2
+            periodSeconds: 60
+        selectPolicy: Min
+  
+  resources:
+    limits:
+      cpu: 8000m
+      memory: 8Gi
+    requests:
+      cpu: 2000m
+      memory: 4Gi
+
+# =============================================================================
+# SCENARIO 6: Minimal Cloud Installation
+# =============================================================================
+# Cost-optimized for cloud environments
+# - Spot instance tolerations
+# - Minimal resources
+# - Cloud-native storage
+
+cloud-minimal:
+  replicaCount: 1
+  
+  image:
+    tag: "v4.15.3"
+  
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+  
+  motionTools:
+    smtp:
+      enabled: true
+      host: "email-smtp.eu-west-1.amazonaws.com"
+      port: 587
+      from: "noreply@cloudmotion.io"
+      existingSecret: "ses-credentials"
+  
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: "gp3"
+  
+  mariadb:
+    primary:
+      persistence:
+        storageClass: "gp3"
+        size: 5Gi
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  
+  tolerations:
+    - key: "node.kubernetes.io/spot"
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"
+  
+  nodeSelector:
+    node.kubernetes.io/instance-type: "t3.medium"
+
+# =============================================================================
+# NOTES:
+# =============================================================================
+# 1. These are example configurations. Adjust according to your needs.
+# 2. Always use secrets for sensitive data in production.
+# 3. Test thoroughly in a staging environment before production deployment.
+# 4. Monitor resource usage and adjust limits/requests accordingly.
+# 5. Enable security features (NetworkPolicy, PodSecurityPolicy) in production.
+# 6. Regular backups are essential - implement a backup strategy.
+# 7. Consider using external secret management (Vault, Sealed Secrets, etc.).

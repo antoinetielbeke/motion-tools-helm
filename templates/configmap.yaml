@@ -1,0 +1,278 @@
+{{- if .Values.motionTools }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "motion-tools.fullname" . }}
+  labels:
+    {{- include "motion-tools.labels" . | nindent 4 }}
+data:
+  config.json: |
+    {
+      "resourceBase": "/",
+      "baseLanguage": "en",
+      "randomSeed": "{{ randAlphaNum 16 }}",
+      "cookieValidationKey": "{{ randAlphaNum 32 }}",
+      "cookieDomain": null,
+      "xFrameOptions": "sameorigin",
+      "xPoweredBy": null,
+      "confirmEmailAddresses": true,
+      "mailFromName": "Motion Tools",
+      "mailFromEmail": "{{ .Values.motionTools.smtp.from }}",
+      "emailFromName": "Motion Tools",
+      "emailReplyTo": "{{ .Values.motionTools.smtp.from }}",
+      "sendMailLog": null,
+      "adminUserIds": [],
+      "siteBehaviorClasses": [],
+      "authClientCollection": {
+        "site": {
+          "class": "app\\components\\SiteAuth",
+          "users": []
+        }
+      },
+      "autoLoginDuration": 31536000,
+      "tmpDir": "/tmp",
+      "reportErrorsEmail": null,
+      "onlyDebugViaEmail": false,
+      "mailService": {
+        "transport": "sendmail"
+      },
+      {{- if .Values.motionTools.valkey.enabled }}
+      "redis": {
+        "hostname": "{{ include "motion-tools.valkeyHost" . }}",
+        "port": {{ .Values.motionTools.valkey.port }},
+        "database": {{ .Values.motionTools.valkey.database }}
+        {{- if .Values.motionTools.valkey.password }},
+        "password": "REDIS_PASSWORD_PLACEHOLDER"
+        {{- end }}
+      },
+      {{- end }}
+      {{- if .Values.motionTools.jwt.enabled }}
+      "jwtPrivateKey": "{{ .Values.motionTools.jwt.privateKeyPath }}",
+      {{- end }}
+      {{- if .Values.motionTools.backgroundJobs.enabled }}
+      "backgroundJobs": {
+        "notifications": {{ .Values.motionTools.backgroundJobs.notifications }}
+      },
+      {{- if .Values.motionTools.backgroundJobs.healthCheckKey }}
+      "healthCheckKey": "{{ .Values.motionTools.backgroundJobs.healthCheckKey }}",
+      {{- end }}
+      {{- end }}
+      {{- if .Values.motionTools.imageMagick.enabled }}
+      "imageMagickPath": "{{ .Values.motionTools.imageMagick.path }}",
+      {{- end }}
+      {{- if eq .Values.motionTools.pdfRendering.engine "weasyprint" }}
+      "weasyprintPath": "{{ .Values.motionTools.pdfRendering.weasyprintPath }}",
+      {{- else if eq .Values.motionTools.pdfRendering.engine "latex" }}
+      "lualatexPath": "{{ .Values.motionTools.pdfRendering.lualatexPath }}",
+      "pdfunitePath": "{{ .Values.motionTools.pdfRendering.pdfunitePath }}",
+      {{- end }}
+      {{- if .Values.motionTools.liveServer.enabled }}
+      "live": {
+        "installationId": "{{ .Values.motionTools.liveServer.installationId }}",
+        "wsUri": "{{ .Values.motionTools.liveServer.wsUri }}",
+        "stompJsUri": "{{ .Values.motionTools.liveServer.stompJsUri }}",
+        "rabbitMqUri": "{{ .Values.motionTools.liveServer.rabbitMqUri }}",
+        "rabbitMqExchangeName": "{{ .Values.motionTools.liveServer.rabbitMqExchangeName }}",
+        "rabbitMqUsername": "{{ .Values.motionTools.liveServer.rabbitMqUsername }}",
+        "rabbitMqPassword": "RABBITMQ_PASSWORD_PLACEHOLDER"
+      },
+      {{- end }}
+      "multisiteMode": false,
+      "domainPlain": "https://{{ .Values.motionTools.apacheFqdn }}/",
+      "domainSubdomain": null,
+      "siteSubdomain": null,
+      "prettyUrl": true,
+      "confirmEmailAddresses": true,
+      "dbConnection": {
+        "class": "yii\\db\\Connection",
+        "dsn": "mysql:host={{ include "motion-tools.databaseHost" . }};port={{ include "motion-tools.databasePort" . }};dbname={{ include "motion-tools.databaseName" . }}",
+        "emulatePrepare": true,
+        "username": "{{ include "motion-tools.databaseUser" . }}",
+        "password": "DB_PASSWORD_PLACEHOLDER",
+        "charset": "utf8mb4",
+        "tablePrefix": null
+      }
+    }
+  
+  .htaccess: |
+    RewriteEngine on
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule . index.php
+    
+    <IfModule mod_headers.c>
+      Header always set X-Frame-Options "SAMEORIGIN"
+      Header always set X-Content-Type-Options "nosniff"
+      Header always set X-XSS-Protection "1; mode=block"
+      Header always set Referrer-Policy "same-origin"
+    </IfModule>
+    
+    <IfModule mod_deflate.c>
+      AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+    </IfModule>
+    
+    <IfModule mod_expires.c>
+      ExpiresActive On
+      ExpiresByType image/jpeg "access plus 1 year"
+      ExpiresByType image/gif "access plus 1 year"
+      ExpiresByType image/png "access plus 1 year"
+      ExpiresByType image/webp "access plus 1 year"
+      ExpiresByType image/svg+xml "access plus 1 year"
+      ExpiresByType image/x-icon "access plus 1 year"
+      ExpiresByType text/css "access plus 1 month"
+      ExpiresByType text/javascript "access plus 1 month"
+      ExpiresByType application/javascript "access plus 1 month"
+      ExpiresByType application/pdf "access plus 1 month"
+      ExpiresByType application/x-shockwave-flash "access plus 1 month"
+    </IfModule>
+
+  php.ini: |
+    memory_limit = {{ .Values.motionTools.php.memoryLimit }}
+    max_execution_time = {{ .Values.motionTools.php.maxExecutionTime }}
+    post_max_size = {{ .Values.motionTools.php.postMaxSize }}
+    upload_max_filesize = {{ .Values.motionTools.php.uploadMaxFilesize }}
+    max_file_uploads = 20
+    
+    ; Session settings
+    session.gc_maxlifetime = 86400
+    session.cookie_lifetime = 0
+    session.cookie_httponly = On
+    session.cookie_samesite = Lax
+    session.use_strict_mode = On
+    session.use_only_cookies = On
+    session.use_trans_sid = Off
+    
+    ; Error reporting
+    display_errors = Off
+    display_startup_errors = Off
+    error_reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT
+    log_errors = On
+    
+    ; Security settings
+    expose_php = Off
+    allow_url_fopen = On
+    allow_url_include = Off
+    
+    ; Performance settings
+    opcache.enable = 1
+    opcache.memory_consumption = 128
+    opcache.interned_strings_buffer = 8
+    opcache.max_accelerated_files = 10000
+    opcache.revalidate_freq = 2
+    opcache.save_comments = 1
+    
+    ; Timezone
+    date.timezone = {{ .Values.motionTools.timezone }}
+
+  msmtprc: |
+    {{- if .Values.motionTools.smtp.enabled }}
+    # MSMTP configuration for Motion Tools
+    defaults
+    auth           on
+    tls            on
+    tls_trust_file /etc/ssl/certs/ca-certificates.crt
+    logfile        /var/log/msmtp.log
+    
+    account        default
+    host           {{ .Values.motionTools.smtp.host }}
+    port           {{ .Values.motionTools.smtp.port }}
+    from           {{ .Values.motionTools.smtp.from }}
+    user           {{ .Values.motionTools.smtp.user }}
+    password       SMTP_PASSWORD_PLACEHOLDER
+    
+    # Set default account
+    account default : default
+    {{- else }}
+    # SMTP is disabled
+    {{- end }}
+
+  apache2.conf: |
+    ServerRoot "/etc/apache2"
+    Listen 80
+    
+    LoadModule mpm_prefork_module /usr/lib/apache2/modules/mod_mpm_prefork.so
+    LoadModule authn_core_module /usr/lib/apache2/modules/mod_authn_core.so
+    LoadModule authz_core_module /usr/lib/apache2/modules/mod_authz_core.so
+    LoadModule authz_host_module /usr/lib/apache2/modules/mod_authz_host.so
+    LoadModule dir_module /usr/lib/apache2/modules/mod_dir.so
+    LoadModule env_module /usr/lib/apache2/modules/mod_env.so
+    LoadModule mime_module /usr/lib/apache2/modules/mod_mime.so
+    LoadModule negotiation_module /usr/lib/apache2/modules/mod_negotiation.so
+    LoadModule rewrite_module /usr/lib/apache2/modules/mod_rewrite.so
+    LoadModule headers_module /usr/lib/apache2/modules/mod_headers.so
+    LoadModule deflate_module /usr/lib/apache2/modules/mod_deflate.so
+    LoadModule expires_module /usr/lib/apache2/modules/mod_expires.so
+    LoadModule php_module /usr/lib/apache2/modules/libphp.so
+    
+    User www-data
+    Group www-data
+    
+    ServerAdmin webmaster@localhost
+    ServerName {{ .Values.motionTools.apacheFqdn }}
+    
+    <Directory />
+        Options FollowSymLinks
+        AllowOverride None
+        Require all denied
+    </Directory>
+    
+    <Directory /var/www/>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+    
+    <Directory /var/www/html>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+    
+    DocumentRoot /var/www/html/web
+    
+    <Directory /var/www/html/web>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+        
+        # URL rewriting
+        RewriteEngine On
+        RewriteCond %{REQUEST_FILENAME} !-f
+        RewriteCond %{REQUEST_FILENAME} !-d
+        RewriteRule . /index.php [L]
+    </Directory>
+    
+    DirectoryIndex index.php index.html
+    
+    <FilesMatch "\.php$">
+        SetHandler application/x-httpd-php
+    </FilesMatch>
+    
+    ErrorLog ${APACHE_LOG_DIR}/error.log
+    CustomLog ${APACHE_LOG_DIR}/access.log combined
+    
+    # Security headers
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-XSS-Protection "1; mode=block"
+    
+    # Hide server version
+    ServerTokens Prod
+    ServerSignature Off
+    
+    # Timeout settings
+    Timeout 300
+    KeepAlive On
+    MaxKeepAliveRequests 100
+    KeepAliveTimeout 5
+    
+    # Include other configuration files
+    IncludeOptional conf-enabled/*.conf
+    IncludeOptional sites-enabled/*.conf
+
+  {{- if .Values.debug }}
+  DEBUG: |
+    # This file enables debug mode
+    # Remove this file to disable debug mode
+  {{- end }}
+{{- end }}

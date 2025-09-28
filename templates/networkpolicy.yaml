@@ -1,0 +1,86 @@
+{{- if .Values.networkPolicy.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "motion-tools.fullname" . }}
+  labels:
+    {{- include "motion-tools.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "motion-tools.selectorLabels" . | nindent 6 }}
+  {{- with .Values.networkPolicy.policyTypes }}
+  policyTypes:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if and (has "Ingress" .Values.networkPolicy.policyTypes) }}
+  ingress:
+    {{- if .Values.networkPolicy.ingress }}
+    {{- toYaml .Values.networkPolicy.ingress | nindent 4 }}
+    {{- else }}
+    # Default: Allow ingress on the service port
+    - ports:
+      - protocol: TCP
+        port: {{ .Values.service.targetPort }}
+      {{- if .Values.networkPolicy.ingressFrom }}
+      from:
+        {{- toYaml .Values.networkPolicy.ingressFrom | nindent 8 }}
+      {{- else }}
+      # Allow from anywhere if no specific sources defined
+      from: []
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if and (has "Egress" .Values.networkPolicy.policyTypes) }}
+  egress:
+    {{- if .Values.networkPolicy.egress }}
+    {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
+    {{- else }}
+    # Default egress rules
+    # Allow DNS
+    - ports:
+      - protocol: TCP
+        port: 53
+      - protocol: UDP
+        port: 53
+    # Allow database connection
+    - ports:
+      - protocol: TCP
+        port: {{ include "motion-tools.databasePort" . }}
+      to:
+      - podSelector:
+          matchLabels:
+            {{- if .Values.mariadb.enabled }}
+            app.kubernetes.io/name: mariadb
+            app.kubernetes.io/instance: {{ .Release.Name }}
+            {{- else }}
+            # External database - allow all IPs (you should restrict this)
+            {}
+            {{- end }}
+    {{- if and .Values.motionTools.smtp.enabled }}
+    # Allow SMTP connection
+    - ports:
+      - protocol: TCP
+        port: {{ .Values.motionTools.smtp.port }}
+    {{- end }}
+    {{- if and .Values.motionTools.valkey.enabled }}
+    # Allow Valkey connection (Redis-compatible)
+    - ports:
+      - protocol: TCP
+        port: {{ .Values.motionTools.valkey.port }}
+    {{- end }}
+    {{- if and .Values.motionTools.liveServer.enabled }}
+    # Allow RabbitMQ connection
+    - ports:
+      - protocol: TCP
+        port: 5672
+      - protocol: TCP
+        port: 15672
+    {{- end }}
+    # Allow HTTPS for external API calls
+    - ports:
+      - protocol: TCP
+        port: 443
+    {{- end }}
+  {{- end }}
+{{- end }}

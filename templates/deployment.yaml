@@ -1,0 +1,331 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "motion-tools.fullname" . }}
+  labels:
+    {{- include "motion-tools.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "motion-tools.selectorLabels" . | nindent 6 }}
+  {{- with .Values.updateStrategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "motion-tools.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "motion-tools.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if or .Values.mariadb.enabled .Values.valkey.enabled }}
+      initContainers:
+        {{- if .Values.mariadb.enabled }}
+        - name: wait-for-db
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z {{ include "motion-tools.databaseHost" . }} {{ include "motion-tools.databasePort" . }}; do
+                echo "Waiting for database to be ready..."
+                sleep 5
+              done
+              echo "Database is ready!"
+          {{- with .Values.resources }}
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          {{- end }}
+        {{- end }}
+        {{- if .Values.valkey.enabled }}
+        - name: wait-for-valkey
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z {{ include "motion-tools.valkeyHost" . }} {{ .Values.motionTools.valkey.port | default 6379 }}; do
+                echo "Waiting for Valkey to be ready..."
+                sleep 5
+              done
+              echo "Valkey is ready!"
+          {{- with .Values.resources }}
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          {{- end }}
+        {{- end }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "motion-tools.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          env:
+            # Timezone configuration
+            - name: TIMEZONE
+              value: {{ .Values.motionTools.timezone | quote }}
+            
+            # Apache configuration
+            - name: APACHE_FQDN
+              value: {{ .Values.motionTools.apacheFqdn | quote }}
+            
+            # Database configuration
+            - name: DB_HOST
+              value: {{ include "motion-tools.databaseHost" . }}
+            - name: DB_PORT
+              value: {{ include "motion-tools.databasePort" . | quote }}
+            - name: DB_NAME
+              value: {{ include "motion-tools.databaseName" . }}
+            - name: DB_USER
+              value: {{ include "motion-tools.databaseUser" . }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.databaseSecretName" . }}
+                  key: {{ include "motion-tools.databaseSecretPasswordKey" . }}
+            
+            {{- if .Values.motionTools.smtp.enabled }}
+            # SMTP configuration
+            - name: SMTP_HOST
+              value: {{ .Values.motionTools.smtp.host | quote }}
+            - name: SMTP_PORT
+              value: {{ .Values.motionTools.smtp.port | quote }}
+            - name: SMTP_FROM
+              value: {{ .Values.motionTools.smtp.from | quote }}
+            - name: SMTP_USER
+              value: {{ .Values.motionTools.smtp.user | quote }}
+            - name: SMTP_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.smtpSecretName" . }}
+                  key: {{ .Values.motionTools.smtp.secretKey }}
+            {{- end }}
+            
+            {{- if .Values.motionTools.valkey.enabled }}
+            # Valkey configuration (Redis-compatible)
+            - name: REDIS_HOST
+              value: {{ include "motion-tools.valkeyHost" . | quote }}
+            - name: REDIS_PORT
+              value: {{ .Values.motionTools.valkey.port | quote }}
+            - name: REDIS_DATABASE
+              value: {{ .Values.motionTools.valkey.database | quote }}
+            {{- if .Values.motionTools.valkey.password }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.valkeySecretName" . }}
+                  key: {{ .Values.motionTools.valkey.secretKey }}
+            {{- end }}
+            {{- end }}
+            
+            {{- if .Values.motionTools.imageMagick.enabled }}
+            # ImageMagick configuration
+            - name: IMAGEMAGICK_PATH
+              value: {{ .Values.motionTools.imageMagick.path | quote }}
+            {{- end }}
+            
+            {{- if .Values.motionTools.pdfRendering.engine }}
+            # PDF rendering configuration
+            - name: PDF_ENGINE
+              value: {{ .Values.motionTools.pdfRendering.engine | quote }}
+            {{- if eq .Values.motionTools.pdfRendering.engine "weasyprint" }}
+            - name: WEASYPRINT_PATH
+              value: {{ .Values.motionTools.pdfRendering.weasyprintPath | quote }}
+            {{- else if eq .Values.motionTools.pdfRendering.engine "latex" }}
+            - name: LUALATEX_PATH
+              value: {{ .Values.motionTools.pdfRendering.lualatexPath | quote }}
+            - name: PDFUNITE_PATH
+              value: {{ .Values.motionTools.pdfRendering.pdfunitePath | quote }}
+            {{- end }}
+            {{- end }}
+            
+            {{- if .Values.motionTools.backgroundJobs.enabled }}
+            # Background jobs configuration
+            - name: BACKGROUND_JOBS_ENABLED
+              value: "true"
+            - name: BACKGROUND_JOBS_NOTIFICATIONS
+              value: {{ .Values.motionTools.backgroundJobs.notifications | quote }}
+            {{- if .Values.motionTools.backgroundJobs.healthCheckKey }}
+            - name: HEALTH_CHECK_KEY
+              value: {{ .Values.motionTools.backgroundJobs.healthCheckKey | quote }}
+            {{- end }}
+            {{- end }}
+            
+            {{- if .Values.motionTools.liveServer.enabled }}
+            # Live server configuration
+            - name: LIVE_SERVER_ENABLED
+              value: "true"
+            - name: LIVE_INSTALLATION_ID
+              value: {{ .Values.motionTools.liveServer.installationId | quote }}
+            - name: LIVE_WS_URI
+              value: {{ .Values.motionTools.liveServer.wsUri | quote }}
+            - name: LIVE_STOMP_JS_URI
+              value: {{ .Values.motionTools.liveServer.stompJsUri | quote }}
+            - name: LIVE_RABBITMQ_URI
+              value: {{ .Values.motionTools.liveServer.rabbitMqUri | quote }}
+            - name: LIVE_RABBITMQ_EXCHANGE
+              value: {{ .Values.motionTools.liveServer.rabbitMqExchangeName | quote }}
+            - name: LIVE_RABBITMQ_USERNAME
+              value: {{ .Values.motionTools.liveServer.rabbitMqUsername | quote }}
+            {{- if .Values.motionTools.liveServer.rabbitMqPassword }}
+            - name: LIVE_RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.rabbitMqSecretName" . }}
+                  key: {{ .Values.motionTools.liveServer.rabbitMqSecretKey }}
+            {{- end }}
+            {{- end }}
+            
+            {{- if .Values.debug }}
+            # Debug mode
+            - name: DEBUG
+              value: "true"
+            {{- end }}
+            
+            # PHP configuration
+            - name: PHP_MEMORY_LIMIT
+              value: {{ .Values.motionTools.php.memoryLimit | quote }}
+            - name: PHP_MAX_EXECUTION_TIME
+              value: {{ .Values.motionTools.php.maxExecutionTime | quote }}
+            - name: PHP_POST_MAX_SIZE
+              value: {{ .Values.motionTools.php.postMaxSize | quote }}
+            - name: PHP_UPLOAD_MAX_FILESIZE
+              value: {{ .Values.motionTools.php.uploadMaxFilesize | quote }}
+            
+            {{- with .Values.motionTools.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          
+          {{- with .Values.motionTools.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          
+          {{- if .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          {{- end }}
+          
+          {{- if .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          {{- end }}
+          
+          {{- if .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml .Values.startupProbe | nindent 12 }}
+          {{- end }}
+          
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          
+          volumeMounts:
+            - name: data
+              mountPath: /var/www/html
+              {{- if .Values.persistence.subPath }}
+              subPath: {{ .Values.persistence.subPath }}
+              {{- end }}
+            - name: config
+              mountPath: /var/www/html/config
+            {{- if .Values.motionTools.jwt.enabled }}
+            - name: jwt-key
+              mountPath: {{ .Values.motionTools.jwt.privateKeyPath | dir }}
+              readOnly: true
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+        
+        {{- with .Values.sidecarContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "motion-tools.volumeName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: config
+          configMap:
+            name: {{ include "motion-tools.fullname" . }}
+        {{- if .Values.motionTools.jwt.enabled }}
+        - name: jwt-key
+          secret:
+            secretName: {{ .Values.motionTools.jwt.privateKeySecret }}
+            defaultMode: 0400
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
