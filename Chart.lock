@@ -1,0 +1,9 @@
+dependencies:
+- name: mariadb
+  repository: oci://registry-1.docker.io/cloudpirates
+  version: 0.3.0
+- name: valkey
+  repository: oci://registry-1.docker.io/cloudpirates
+  version: 0.3.2
+digest: sha256:4553fcfb11ddb717e109c1eb0387f3491c81b6725fd495b38e75190145bfe56f
+generated: "2025-09-29T22:05:41.84056+02:00"

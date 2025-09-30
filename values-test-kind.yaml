@@ -1,0 +1,207 @@
+# Test values for Motion Tools deployment on kind cluster
+# This configuration enables Valkey for testing the CloudPirates chart integration
+
+# Basic Motion Tools configuration
+replicaCount: 1
+
+image:
+  repository: devopsansiblede/antragsgruen
+  tag: "v4.15.3"
+  pullPolicy: IfNotPresent
+
+# Minimal resources for local testing
+resources:
+  limits:
+    memory: 512Mi
+    cpu: 500m
+  requests:
+    memory: 256Mi
+    cpu: 100m
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+
+# Disable ingress for kind testing (use port-forward instead)
+ingress:
+  enabled: false
+
+# Motion Tools specific configuration
+motionTools:
+  siteName: "Motion Tools Test"
+  siteOrganization: "Test Organization"
+  apacheFqdn: "localhost:8080"
+
+  # Email settings for testing
+  emailFromName: "Motion Tools Test"
+  emailFromEmail: "test@example.com"
+
+  # Disable SMTP for testing to avoid secret issues
+  smtp:
+    enabled: false
+
+  # Enable Valkey integration
+  valkey:
+    enabled: true
+    # These will be auto-configured when using integrated Valkey
+    # host: auto-configured
+    port: 6379
+    database: 0
+    # Password will use the integrated Valkey password
+
+  # Database configuration
+  database:
+    host: ""  # Will use integrated MariaDB
+    port: 3306
+    database: "motiontools"
+    username: "motiontools"
+    password: "testpassword"
+
+  # Background jobs disabled for testing
+  backgroundJobs:
+    enabled: false
+
+# Enable integrated Valkey deployment (CloudPirates chart)
+valkey:
+  enabled: true
+
+  # Single instance for local testing
+  replicaCount: 1
+
+  # Authentication
+  auth:
+    enabled: true
+    password: "test-valkey-password"
+
+  # Valkey configuration
+  config:
+    maxMemory: "128mb"
+    maxMemoryPolicy: "allkeys-lru"
+    save: ""  # Disable persistence for faster testing
+
+  # Minimal resources for local testing
+  resources:
+    limits:
+      memory: 128Mi
+      cpu: 100m
+    requests:
+      memory: 64Mi
+      cpu: 50m
+
+  # Disable persistence for testing
+  persistence:
+    enabled: false
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 6379
+
+  # Security context (adjusted for kind)
+  podSecurityContext:
+    fsGroup: 1000
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 1000
+    # Note: readOnlyRootFilesystem might need to be false for some operations
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
+        - ALL
+
+# Enable integrated MariaDB deployment
+mariadb:
+  enabled: true
+
+  # Authentication
+  auth:
+    enabled: true
+    rootPassword: "root-password"
+    database: "motiontools"
+    username: "motiontools"
+    password: "testpassword"
+
+  # Minimal resources for local testing
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 250m
+    requests:
+      memory: 256Mi
+      cpu: 100m
+
+
+  # Disable persistence for faster testing
+  persistence:
+    enabled: false
+
+# Additional settings for kind
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Disable HPA for testing
+autoscaling:
+  enabled: false
+
+# Pod security policy (if needed)
+# Running as root for testing to avoid permission issues
+podSecurityContext:
+  runAsUser: 0
+  runAsGroup: 0
+  fsGroup: 0
+
+# Liveness and readiness probes with relaxed settings for testing
+livenessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 5
+
+readinessProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# Extra environment variables for debugging
+extraEnvVars:
+  - name: LOG_LEVEL
+    value: "debug"
+  - name: ENVIRONMENT
+    value: "testing"
+
+# Container security context - allow running as root for testing
+securityContext:
+  runAsUser: 0
+  runAsGroup: 0
+  allowPrivilegeEscalation: true
+  readOnlyRootFilesystem: false
+  capabilities:
+    add:
+      - CHOWN
+      - SETUID
+      - SETGID
+
+# Volume mounts for testing
+persistence:
+  enabled: true
+  storageClass: "standard"  # kind default storage class
+  accessMode: ReadWriteOnce
+  size: 1Gi
+
+  # Mount paths
+  mountPath: /var/www/html/runtime
+
+# Config volume
+configVolume:
+  enabled: true
+
+# Annotations for testing
+podAnnotations:
+  test: "kind-cluster"
+  valkey: "cloudpirates"

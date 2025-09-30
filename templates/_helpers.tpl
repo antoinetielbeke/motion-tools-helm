@@ -127,9 +127,9 @@ Valkey host
 {{- define "motion-tools.valkeyHost" -}}
 {{- if .Values.valkey.enabled -}}
 {{- if eq .Values.valkey.architecture "replication" -}}
-{{- printf "%s-%s-master" (include "motion-tools.fullname" .) "valkey" | trunc 63 | trimSuffix "-" -}}
+{{- printf "%s-%s" (include "motion-tools.fullname" .) "valkey" | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
-{{- printf "%s-%s-master" (include "motion-tools.fullname" .) "valkey" | trunc 63 | trimSuffix "-" -}}
+{{- printf "%s-%s" (include "motion-tools.fullname" .) "valkey" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 {{- else -}}
 {{- .Values.motionTools.valkey.host -}}

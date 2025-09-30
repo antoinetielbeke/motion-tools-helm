@@ -180,6 +180,10 @@ externalDatabase:
 
 ### Enabling Valkey Cache (Redis-compatible)
 
+This chart uses the CloudPirates Valkey Helm chart (v0.3.2) for Redis-compatible caching. The chart is available at `oci://registry-1.docker.io/cloudpirates/valkey`.
+
+For more information about the CloudPirates Valkey chart, see: https://github.com/CloudPirates-io/helm-charts/tree/main/charts/valkey
+
 ```yaml
 motionTools:
   valkey:
@@ -187,6 +191,23 @@ motionTools:
     host: valkey.example.com
     port: 6379
     password: valkeypassword
+```
+
+When using the bundled Valkey deployment:
+
+```yaml
+valkey:
+  enabled: true
+  replicaCount: 1
+  auth:
+    enabled: true
+    password: "changeme"
+    # Use existing secret for password
+    existingSecret: ""
+    existingSecretPasswordKey: "password"
+  config:
+    maxMemory: "256mb"
+    maxMemoryPolicy: "allkeys-lru"
 ```
 
 ### Production Configuration

@@ -212,76 +212,92 @@ motionTools:
     rabbitMqExistingSecret: ""
     rabbitMqSecretKey: "rabbitmq-password"
 
-# Valkey configuration (Redis-compatible in-memory data store)
+# Valkey configuration (Redis-compatible in-memory data store) - CloudPirates chart
 valkey:
   enabled: false
+  
+  # Number of Valkey replicas
+  replicaCount: 1
+  
+  # Authentication settings
   auth:
     enabled: true
     password: "changeme"
     # Use existing secret for password
     existingSecret: ""
-    existingSecretPasswordKey: "valkey-password"
-  architecture: standalone
-  master:
-    persistence:
-      enabled: true
-      storageClass: ""
-      size: 8Gi
-    resources:
-      limits:
-        memory: 256Mi
-        cpu: 250m
-      requests:
-        memory: 128Mi
-        cpu: 100m
-  replica:
-    replicaCount: 1
-    persistence:
-      enabled: true
-      storageClass: ""
-      size: 8Gi
-    resources:
-      limits:
-        memory: 256Mi
-        cpu: 250m
-      requests:
-        memory: 128Mi
-        cpu: 100m
-  metrics:
-    enabled: false
-    serviceMonitor:
-      enabled: false
-  volumePermissions:
-    enabled: false
+    existingSecretPasswordKey: "password"
+  
+  # Valkey configuration
+  config:
+    maxMemory: "256mb"
+    maxMemoryPolicy: "allkeys-lru"
+    save: "900 1 300 10 60 10000"
+    extraConfig: []
+  
+  # Resource limits and requests
+  resources:
+    limits:
+      memory: 256Mi
+      cpu: 250m
+    requests:
+      memory: 128Mi
+      cpu: 100m
+  
+  # Persistence configuration
+  persistence:
+    enabled: true
+    storageClass: ""
+    size: 8Gi
+    accessModes:
+      - ReadWriteOnce
+  
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 6379
+  
+  # Security context
+  podSecurityContext:
+    fsGroup: 1000
+  
+  securityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 1000
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
 
-# MariaDB configuration
+# MariaDB configuration (CloudPirates chart)
 mariadb:
   enabled: true
   auth:
+    enabled: true
     rootPassword: "changeme"
     database: "antragsgruen"
     username: "antragsgruen"
     password: "changeme"
     # Use existing secret for passwords
     existingSecret: ""
-  primary:
-    persistence:
-      enabled: true
-      storageClass: ""
-      size: 8Gi
-    resources:
-      limits:
-        memory: 512Mi
-        cpu: 500m
-      requests:
-        memory: 256Mi
-        cpu: 250m
-  metrics:
-    enabled: false
-    serviceMonitor:
-      enabled: false
-  volumePermissions:
-    enabled: false
+    allowEmptyRootPassword: ""
+    secretKeys:
+      rootPasswordKey: mariadb-root-password
+      userPasswordKey: mariadb-password
+  persistence:
+    enabled: true
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    size: 8Gi
+  resources:
+    limits:
+      memory: 512Mi
+      cpu: 500m
+    requests:
+      memory: 256Mi
+      cpu: 250m
 
 # External database configuration (when mariadb.enabled is false)
 externalDatabase:

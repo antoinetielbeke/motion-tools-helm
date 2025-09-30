@@ -101,13 +101,15 @@ small-production:
   
   mariadb:
     auth:
+      enabled: true
       rootPassword: "secure-root-password"
+      database: "antragsgruen"
+      username: "antragsgruen"
       password: "secure-db-password"
       # existingSecret: "db-credentials"  # Recommended for production
-    primary:
-      persistence:
-        enabled: true
-        size: 10Gi
+    persistence:
+      enabled: true
+      size: 10Gi
   
   resources:
     limits:

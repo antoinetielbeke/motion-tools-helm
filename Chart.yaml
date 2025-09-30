@@ -3,7 +3,7 @@ name: motion-tools
 description: A Helm chart for Motion Tools (Antragsgruen) - an online tool for NGOs and political parties to manage motions, resolutions and amendments
 type: application
 version: 0.1.0
-appVersion: "v4.15.3"
+appVersion: "v4.15"
 keywords:
   - motion
   - politics
@@ -18,12 +18,12 @@ maintainers:
     email: admin@example.com
 dependencies:
   - name: mariadb
-    version: "19.0.7"
-    repository: https://charts.bitnami.com/bitnami
+    version: "0.3.0"
+    repository: oci://registry-1.docker.io/cloudpirates
     condition: mariadb.enabled
   - name: valkey
-    version: "20.5.0"
-    repository: https://charts.bitnami.com/bitnami
+    version: "0.3.2"
+    repository: oci://registry-1.docker.io/cloudpirates
     condition: valkey.enabled
     alias: valkey
     import-values: []
