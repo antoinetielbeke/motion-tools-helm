@@ -2,6 +2,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# Motion Tools requires exactly one replica
 replicaCount: 1
 
 image:
@@ -106,6 +107,7 @@ startupProbe:
   failureThreshold: 30
   successThreshold: 1
 
+# Autoscaling
 autoscaling:
   enabled: false
   minReplicas: 1
@@ -114,22 +116,25 @@ autoscaling:
   targetMemoryUtilizationPercentage: 80
 
 # Volume configuration for persistent data
+# StatefulSet handles persistence through volumeClaimTemplates
 persistence:
   enabled: true
   accessMode: ReadWriteOnce
   size: 10Gi
   storageClass: ""
   annotations: {}
-  # existingClaim: ""
+  # Note: existingClaim is not used with StatefulSet
+  mountPath: "/var/www/html"
+  # subPath: ""
 
 # Motion Tools specific configuration
 motionTools:
   # Environment variables for the container
   timezone: "Europe/Berlin"
-  
+
   # Apache FQDN configuration
   apacheFqdn: "motion.local"
-  
+
   # SMTP Configuration
   smtp:
     enabled: true
@@ -143,26 +148,19 @@ motionTools:
     existingSecret: ""
     # Key in the secret containing the password
     secretKey: "smtp-password"
-  
+
   # Additional environment variables
   extraEnvVars: []
   # - name: CUSTOM_VAR
   #   value: "custom-value"
-  
+
   # Additional environment variables from ConfigMaps or Secrets
   extraEnvFrom: []
   # - configMapRef:
   #     name: my-configmap
   # - secretRef:
   #     name: my-secret
-  
-  # PHP configuration
-  php:
-    memoryLimit: "256M"
-    maxExecutionTime: "300"
-    postMaxSize: "50M"
-    uploadMaxFilesize: "50M"
-  
+
   # Valkey configuration (optional, Redis-compatible)
   valkey:
     enabled: false
@@ -172,20 +170,20 @@ motionTools:
     password: ""
     existingSecret: ""
     secretKey: "valkey-password"
-  
+
   # JWT configuration (optional)
   jwt:
     enabled: false
     # Private key should be mounted from secret
     privateKeySecret: ""
     privateKeyPath: "/var/www/html/config/jwt.key"
-  
+
   # Background jobs configuration
   backgroundJobs:
     enabled: false
     notifications: true
     healthCheckKey: ""
-  
+
   # PDF rendering configuration
   pdfRendering:
     # Options: tcpdf, weasyprint, latex
@@ -193,12 +191,12 @@ motionTools:
     weasyprintPath: "/usr/bin/weasyprint"
     lualatexPath: "/usr/bin/lualatex"
     pdfunitePath: "/usr/bin/pdfunite"
-  
+
   # ImageMagick configuration
   imageMagick:
     enabled: false
     path: "/usr/bin/convert"
-  
+
   # Live server configuration (optional)
   liveServer:
     enabled: false
@@ -215,10 +213,10 @@ motionTools:
 # Valkey configuration (Redis-compatible in-memory data store) - CloudPirates chart
 valkey:
   enabled: false
-  
+
   # Number of Valkey replicas
   replicaCount: 1
-  
+
   # Authentication settings
   auth:
     enabled: true
@@ -226,14 +224,14 @@ valkey:
     # Use existing secret for password
     existingSecret: ""
     existingSecretPasswordKey: "password"
-  
+
   # Valkey configuration
   config:
     maxMemory: "256mb"
     maxMemoryPolicy: "allkeys-lru"
     save: "900 1 300 10 60 10000"
     extraConfig: []
-  
+
   # Resource limits and requests
   resources:
     limits:
@@ -242,7 +240,7 @@ valkey:
     requests:
       memory: 128Mi
       cpu: 100m
-  
+
   # Persistence configuration
   persistence:
     enabled: true
@@ -250,16 +248,16 @@ valkey:
     size: 8Gi
     accessModes:
       - ReadWriteOnce
-  
+
   # Service configuration
   service:
     type: ClusterIP
     port: 6379
-  
+
   # Security context
   podSecurityContext:
     fsGroup: 1000
-  
+
   securityContext:
     allowPrivilegeEscalation: false
     runAsNonRoot: true
@@ -363,12 +361,12 @@ priorityClassName: ""
 # Topology spread constraints
 topologySpreadConstraints: []
 
-# Update strategy
+# Update strategy for StatefulSet
 updateStrategy:
   type: RollingUpdate
+  # Note: maxSurge is not available for StatefulSets
   rollingUpdate:
-    maxSurge: 1
-    maxUnavailable: 0
+    partition: 0
 
 # Revision history limit
 revisionHistoryLimit: 10

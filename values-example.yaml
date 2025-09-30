@@ -88,11 +88,7 @@ small-production:
       # existingSecret: "smtp-credentials"
       # secretKey: "password"
     
-    php:
-      memoryLimit: "512M"
-      maxExecutionTime: "300"
-      postMaxSize: "50M"
-      uploadMaxFilesize: "50M"
+
   
   persistence:
     enabled: true
@@ -182,11 +178,7 @@ enterprise:
       existingSecret: "valkey-credentials"
       secretKey: "password"
     
-    php:
-      memoryLimit: "1G"
-      maxExecutionTime: "600"
-      postMaxSize: "100M"
-      uploadMaxFilesize: "100M"
+
     
     imageMagick:
       enabled: true
@@ -351,11 +343,7 @@ conference:
       enabled: true
       notifications: true
     
-    php:
-      memoryLimit: "4G"
-      maxExecutionTime: "1800"
-      postMaxSize: "200M"
-      uploadMaxFilesize: "200M"
+
   
   autoscaling:
     enabled: true

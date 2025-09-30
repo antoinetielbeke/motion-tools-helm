@@ -3,19 +3,22 @@ name: motion-tools
 description: A Helm chart for Motion Tools (Antragsgruen) - an online tool for NGOs and political parties to manage motions, resolutions and amendments
 type: application
 version: 0.1.0
-appVersion: "v4.15"
+appVersion: "v4.15.3"
 keywords:
   - motion
   - politics
   - amendments
   - antragsgruen
   - voting
+annotations:
+  "helm.sh/single-instance": "true"
+  "helm.sh/notes": "Motion Tools requires single instance deployment."
 home: https://motion.tools
 sources:
   - https://github.com/CatoTH/antragsgruen
 maintainers:
-  - name: Your Organization
-    email: admin@example.com
+  - name: Antoine Tielbeke
+    email: antoine@tielbeke.io
 dependencies:
   - name: mariadb
     version: "0.3.0"

@@ -197,13 +197,6 @@ RabbitMQ secret name
 {{- end -}}
 {{- end -}}
 
-{{/*
-Get the volume name for persistent storage
+{{/* 
+StatefulSet uses a predictable volume name pattern based on pod name
 */}}
-{{- define "motion-tools.volumeName" -}}
-{{- if .Values.persistence.existingClaim -}}
-{{- .Values.persistence.existingClaim -}}
-{{- else -}}
-{{- include "motion-tools.fullname" . -}}
-{{- end -}}
-{{- end -}}

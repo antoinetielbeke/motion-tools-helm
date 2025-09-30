@@ -7,7 +7,6 @@ A Helm chart for deploying [Motion Tools (Antragsgrün)](https://github.com/Cato
 - **Easy Deployment**: Simple installation with sensible defaults
 - **Database Management**: Integrated MariaDB or external database support
 - **Persistent Storage**: Data persistence across pod restarts
-- **High Availability**: Support for multiple replicas and autoscaling
 - **Security**: Built-in security configurations and network policies
 - **Monitoring**: Health checks and probes configured
 - **Customizable**: Extensive configuration options for all components
@@ -15,7 +14,7 @@ A Helm chart for deploying [Motion Tools (Antragsgrün)](https://github.com/Cato
 ## Prerequisites
 
 - Kubernetes 1.19+
-- Helm 3.8+
+- Helm 3.2.0+
 - PV provisioner support in the underlying infrastructure (if persistence is enabled)
 - Optional: cert-manager for automatic TLS certificate management
 
@@ -110,7 +109,7 @@ The following table lists the configurable parameters and their default values.
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `replicaCount` | Number of replicas | `1` |
+| `replicaCount` | Number of replicas (must be 1) | `1` |
 | `image.repository` | Image repository | `devopsansiblede/antragsgruen` |
 | `image.tag` | Image tag | `""` (uses chart appVersion) |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
@@ -147,8 +146,8 @@ The following table lists the configurable parameters and their default values.
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `persistence.enabled` | Enable persistence | `true` |
-| `persistence.accessMode` | Access mode | `ReadWriteOnce` |
+| `persistence.enabled` | Enable persistence using PVC | `true` |
+| `persistence.accessMode` | PVC Access Mode (⚠️ MUST be ReadWriteOnce) | `ReadWriteOnce` |
 | `persistence.size` | Volume size | `10Gi` |
 | `persistence.storageClass` | Storage class | `""` (uses default) |
 | `persistence.existingClaim` | Use existing PVC | `""` |
@@ -182,9 +181,11 @@ The following table lists the configurable parameters and their default values.
 
 ### Autoscaling
 
+*Note: The Motion Tools application is designed for single-instance deployment.*
+
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `autoscaling.enabled` | Enable HPA | `false` |
+| `autoscaling.enabled` | Enable HPA (must be false) | `false` |
 | `autoscaling.minReplicas` | Min replicas | `1` |
 | `autoscaling.maxReplicas` | Max replicas | `10` |
 | `autoscaling.targetCPUUtilizationPercentage` | Target CPU % | `80` |
@@ -284,26 +285,23 @@ resources:
     cpu: 500m
     memory: 1Gi
 
-autoscaling:
-  enabled: true
-  minReplicas: 2
-  maxReplicas: 10
-
 mariadb:
   auth:
     existingSecret: db-credentials
-  primary:
-    persistence:
-      size: 20Gi
-      storageClass: fast-ssd
+  persistence:
+    size: 20Gi
+    storageClass: fast-ssd
 
 networkPolicy:
   enabled: true
-
-podDisruptionBudget:
-  enabled: true
-  minAvailable: 1
 ```
+
+## Limitations
+
+- **StatefulSet with Single Instance**: This chart uses a StatefulSet with exactly one replica
+- **No High Availability**: The application runs as a single StatefulSet pod
+- **Storage**: Uses `volumeClaimTemplates` with `ReadWriteOnce` access mode
+- **Session Management**: Not designed for distributed session handling
 
 ## Upgrading
 
@@ -411,20 +409,6 @@ motionTools:
     weasyprintPath: /usr/bin/weasyprint
 ```
 
-### Live Server Integration
-
-Enable real-time updates with Live Server:
-
-```yaml
-motionTools:
-  liveServer:
-    enabled: true
-    wsUri: ws://live.example.com/websocket
-    rabbitMqUri: http://rabbitmq.example.com:15672
-    rabbitMqUsername: guest
-    rabbitMqPassword: guest
-```
-
 ## Support
 
 - **Motion Tools Documentation**: https://motion.tools
@@ -438,9 +422,3 @@ This Helm chart is provided as-is. Motion Tools (Antragsgrün) is licensed under
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Maintainers
-
-| Name | Email |
-|------|-------|
-| Your Organization | admin@example.com |
