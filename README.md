@@ -47,6 +47,34 @@ kubectl create namespace motion-tools
 helm install motion-tools ./motion-tools-helm --namespace motion-tools
 ```
 
+## Testing with Kind
+
+For local testing and development, you can use the provided Kind configuration:
+
+```bash
+# Create a kind cluster (if not already exists)
+kind create cluster --config kind-config.yaml
+
+# Deploy with test values
+helm install motion-tools . -f values-test-kind.yaml
+
+# Check deployment status
+kubectl get pods -l app.kubernetes.io/instance=motion-tools
+
+# Test the application
+kubectl port-forward svc/motion-tools 8080:80
+# Visit http://localhost:8080 in your browser
+
+# Check logs
+kubectl logs -l app.kubernetes.io/name=motion-tools
+```
+
+The test deployment includes:
+- Motion Tools application with minimal resources
+- MariaDB database (without persistence for faster testing)
+- Valkey cache (CloudPirates chart v0.3.2)
+- All services configured for local development
+
 ## Quick Start
 
 1. **Basic installation with integrated database:**
@@ -331,6 +359,32 @@ Check PVC status:
 kubectl get pvc
 kubectl describe pvc motion-tools
 ```
+
+## Validation
+
+After deployment, validate that all components are working:
+
+```bash
+# Check all pods are running
+kubectl get pods -l app.kubernetes.io/instance=motion-tools
+
+# Test database connectivity
+kubectl exec deployment/motion-tools -- nc -z motion-tools-mariadb 3306
+
+# Test Valkey connectivity (if enabled)
+kubectl exec deployment/motion-tools -- nc -z motion-tools-valkey 6379
+
+# Test application response
+kubectl exec deployment/motion-tools -- curl -s -I http://localhost/
+
+# Check application logs for errors
+kubectl logs deployment/motion-tools --tail=50
+```
+
+Expected healthy status:
+- All pods should be in `Running` state with `1/1` ready
+- HTTP response should return `200 OK`
+- No error messages in application logs related to database or cache connectivity
 
 ## Advanced Features
 

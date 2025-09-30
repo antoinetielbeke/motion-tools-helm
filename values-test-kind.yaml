@@ -52,7 +52,7 @@ motionTools:
 
   # Database configuration
   database:
-    host: ""  # Will use integrated MariaDB
+    host: "" # Will use integrated MariaDB
     port: 3306
     database: "motiontools"
     username: "motiontools"
@@ -78,7 +78,7 @@ valkey:
   config:
     maxMemory: "128mb"
     maxMemoryPolicy: "allkeys-lru"
-    save: ""  # Disable persistence for faster testing
+    save: "" # Disable persistence for faster testing
 
   # Minimal resources for local testing
   resources:
@@ -134,7 +134,6 @@ mariadb:
       memory: 256Mi
       cpu: 100m
 
-
   # Disable persistence for faster testing
   persistence:
     enabled: false
@@ -154,6 +153,7 @@ podSecurityContext:
   runAsUser: 0
   runAsGroup: 0
   fsGroup: 0
+  runAsNonRoot: false
 
 # Liveness and readiness probes with relaxed settings for testing
 livenessProbe:
@@ -190,7 +190,7 @@ securityContext:
 # Volume mounts for testing
 persistence:
   enabled: true
-  storageClass: "standard"  # kind default storage class
+  storageClass: "standard" # kind default storage class
   accessMode: ReadWriteOnce
   size: 1Gi
 

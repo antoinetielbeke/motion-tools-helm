@@ -278,7 +278,7 @@ spec:
 
           volumeMounts:
             - name: data
-              mountPath: /var/www/html
+              mountPath: {{ .Values.persistence.mountPath | default "/var/www/html" }}
               {{- if .Values.persistence.subPath }}
               subPath: {{ .Values.persistence.subPath }}
               {{- end }}
