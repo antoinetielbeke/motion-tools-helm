@@ -25,6 +25,7 @@ spec:
     metadata:
       annotations:
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -46,13 +47,12 @@ spec:
       {{- with .Values.priorityClassName }}
       priorityClassName: {{ . }}
       {{- end }}
-      {{- with .Values.initContainers }}
       initContainers:
+        {{- with .Values.initContainers }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- if or .Values.mariadb.enabled .Values.valkey.enabled }}
-      initContainers:
-        - name: init-container
+        {{- end }}
+        {{- if or .Values.mariadb.enabled .Values.valkey.enabled }}
+        - name: wait-for-dependencies
           image: busybox:1.36
           imagePullPolicy: IfNotPresent
           {{- with .Values.securityContext }}
@@ -78,6 +78,76 @@ spec:
               echo "Valkey is ready!"
               {{- end }}
               exit 0
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+        {{- end }}
+        - name: config-init
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /var/www/html/config
+              cp /config-template/config.json /var/www/html/config/
+
+              # Replace placeholders with actual values
+              sed -i "s/DB_PASSWORD_PLACEHOLDER/$DB_PASSWORD/g" /var/www/html/config/config.json
+
+              {{- if and .Values.motionTools.valkey.enabled .Values.motionTools.valkey.password }}
+              sed -i "s/REDIS_PASSWORD_PLACEHOLDER/$REDIS_PASSWORD/g" /var/www/html/config/config.json
+              {{- end }}
+
+              {{- if and .Values.motionTools.smtp.enabled .Values.motionTools.smtp.password }}
+              sed -i "s/SMTP_PASSWORD_PLACEHOLDER/$SMTP_PASSWORD/g" /var/www/html/config/config.json
+              {{- end }}
+
+              {{- if and .Values.motionTools.liveServer.enabled .Values.motionTools.liveServer.rabbitMqPassword }}
+              sed -i "s/RABBITMQ_PASSWORD_PLACEHOLDER/$RABBITMQ_PASSWORD/g" /var/www/html/config/config.json
+              {{- end }}
+
+              echo "Configuration file prepared."
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.databaseSecretName" . }}
+                  key: {{ include "motion-tools.databaseSecretPasswordKey" . }}
+            {{- if and .Values.motionTools.valkey.enabled .Values.motionTools.valkey.password }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.valkeySecretName" . }}
+                  key: {{ .Values.motionTools.valkey.secretKey }}
+            {{- end }}
+            {{- if and .Values.motionTools.smtp.enabled .Values.motionTools.smtp.password }}
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.smtpSecretName" . }}
+                  key: {{ .Values.motionTools.smtp.secretKey }}
+            {{- end }}
+            {{- if and .Values.motionTools.liveServer.enabled .Values.motionTools.liveServer.rabbitMqPassword }}
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.rabbitMqSecretName" . }}
+                  key: {{ .Values.motionTools.liveServer.rabbitMqSecretKey }}
+            {{- end }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /config-template
+            - name: data
+              mountPath: /var/www/html
           resources:
             limits:
               cpu: 100m
@@ -140,7 +210,8 @@ spec:
             {{- end }}
 
             {{- if .Values.motionTools.valkey.enabled }}
-            # Valkey configuration (Redis-compatible)
+            # Valkey configuration (Redis-compatible) is handled via config.json
+            # Environment variables are kept for backward compatibility
             - name: REDIS_HOST
               value: {{ include "motion-tools.valkeyHost" . | quote }}
             - name: REDIS_PORT
@@ -269,8 +340,11 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
 
-      {{- if or .Values.motionTools.jwt.enabled .Values.extraVolumes }}
       volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "motion-tools.fullname" . }}
+
         {{- if .Values.motionTools.jwt.enabled }}
         - name: jwt-key
           secret:
@@ -280,7 +354,6 @@ spec:
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-      {{- end }}
 
       {{- with .Values.nodeSelector }}
       nodeSelector:
