@@ -18,7 +18,7 @@ annotations:
   "helm.sh/notes": "Motion Tools requires single instance deployment."
   artifacthub.io/category: "integration-delivery"
   artifacthub.io/license: "MIT"
-  artifacthub.io/alternativeName: "antragsgruen"
+  artifacthub.io/alternativeName: "motion-tools-antragsgruen"
   artifacthub.io/links: |
     - name: Motion Tools Website
       url: https://motion.tools
