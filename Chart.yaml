@@ -4,15 +4,44 @@ description: A Helm chart for Motion Tools (Antragsgruen) - an online tool for N
 type: application
 version: 0.1.0
 appVersion: "v4.15.3"
+kubeVersion: ">=1.19.0-0"
 keywords:
   - motion
   - politics
   - amendments
   - antragsgruen
   - voting
+icon: https://motion.tools/favicons/favicon-32x32.png
+deprecated: false
 annotations:
   "helm.sh/single-instance": "true"
   "helm.sh/notes": "Motion Tools requires single instance deployment."
+  artifacthub.io/category: "integration-delivery"
+  artifacthub.io/license: "MIT"
+  artifacthub.io/alternativeName: "antragsgruen"
+  artifacthub.io/links: |
+    - name: Motion Tools Website
+      url: https://motion.tools
+    - name: Documentation
+      url: https://github.com/CatoTH/antragsgruen/wiki
+    - name: Support
+      url: https://github.com/CatoTH/antragsgruen/issues
+  artifacthub.io/images: |
+    - name: motion-tools
+      image: devopsansiblede/antragsgruen:v4.15.3
+      platforms:
+        - linux/amd64
+        - linux/arm64
+  artifacthub.io/maintainers: |
+    - name: Antoine Tielbeke
+      email: antoine@tielbeke.io
+  artifacthub.io/changes: |
+    - Initial Helm chart release for Motion Tools (Antragsgruen)
+    - Supports MariaDB and Valkey dependencies
+    - Configurable SMTP, persistence, and ingress
+    - StatefulSet deployment for single-instance requirement
+    - Comprehensive configuration options
+    - Hosted on Cloudsmith for easy distribution
 home: https://motion.tools
 sources:
   - https://github.com/CatoTH/antragsgruen

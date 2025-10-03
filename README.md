@@ -20,30 +20,43 @@ A Helm chart for deploying [Motion Tools (Antragsgrün)](https://github.com/Cato
 
 ## Installation
 
-### Add the Helm repository (if published)
+### Add the Helm repository
 
 ```bash
-helm repo add motion-tools https://your-repo-url
+# Add the Motion Tools repository hosted on Cloudsmith
+helm repo add motion-tools https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/
 helm repo update
 ```
 
 ### Install with default configuration
 
 ```bash
-helm install motion-tools ./motion-tools-helm
+# From repository
+helm install motion-tools motion-tools/motion-tools
+
+# Direct install without adding repository
+helm install motion-tools \
+  --repo 'https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/' \
+  motion-tools
 ```
 
 ### Install with custom values
 
 ```bash
-helm install motion-tools ./motion-tools-helm -f custom-values.yaml
+# From repository
+helm install motion-tools motion-tools/motion-tools -f custom-values.yaml
+
+# Direct install with custom values
+helm install motion-tools \
+  --repo 'https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/' \
+  motion-tools -f custom-values.yaml
 ```
 
 ### Install in a specific namespace
 
 ```bash
 kubectl create namespace motion-tools
-helm install motion-tools ./motion-tools-helm --namespace motion-tools
+helm install motion-tools motion-tools/motion-tools --namespace motion-tools
 ```
 
 ## Testing with Kind
@@ -79,7 +92,7 @@ The test deployment includes:
 1. **Basic installation with integrated database:**
 
 ```bash
-helm install my-motion-tools ./motion-tools-helm \
+helm install my-motion-tools motion-tools/motion-tools \
   --set motionTools.apacheFqdn=motion.example.com \
   --set motionTools.smtp.host=smtp.example.com \
   --set motionTools.smtp.from=noreply@example.com \
@@ -90,7 +103,7 @@ helm install my-motion-tools ./motion-tools-helm \
 2. **Production installation with Ingress and TLS:**
 
 ```bash
-helm install my-motion-tools ./motion-tools-helm \
+helm install my-motion-tools motion-tools/motion-tools \
   --set ingress.enabled=true \
   --set ingress.className=nginx \
   --set ingress.hosts[0].host=motion.example.com \
@@ -311,8 +324,11 @@ networkPolicy:
 # Backup your data first
 kubectl exec -it deployment/motion-tools -- mysqldump -h localhost -u root -p antragsgruen > backup.sql
 
-# Upgrade
-helm upgrade motion-tools ./motion-tools-helm
+# Upgrade from repository
+helm upgrade motion-tools motion-tools/motion-tools
+
+# Or upgrade from source
+helm upgrade motion-tools .
 ```
 
 ## Uninstalling
@@ -418,6 +434,57 @@ motionTools:
 ## License
 
 This Helm chart is provided as-is. Motion Tools (Antragsgrün) is licensed under the AGPL-3.0 license.
+
+## Chart Repository Hosting
+
+This chart is hosted on Cloudsmith for easy distribution and installation.
+
+### Publishing to Cloudsmith
+
+To publish a new version of this chart to Cloudsmith:
+
+```bash
+# Package the chart
+helm package .
+
+# Upload to Cloudsmith (requires authentication)
+cloudsmith push helm tielbeke/motion-tools-helm motion-tools-0.1.0.tgz
+```
+
+### Repository Information
+
+- **Repository URL**: `https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/`
+- **Package Manager**: Helm
+- **Access**: Public
+- **Provider**: Cloudsmith
+
+### Alternative Installation Methods
+
+```bash
+# Method 1: Add repository first (recommended)
+helm repo add motion-tools https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/
+helm repo update
+helm install motion-tools motion-tools/motion-tools
+
+# Method 2: Direct install without adding repo
+helm install motion-tools \
+  --repo 'https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/' \
+  motion-tools
+
+# Method 3: Install specific version
+helm install motion-tools \
+  --repo 'https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/' \
+  motion-tools --version 0.1.0
+```
+
+### Updating Chart Versions
+
+1. Update the `version` in `Chart.yaml`
+2. Update `appVersion` if the application version changed
+3. Add change notes to `artifacthub.io/changes` annotation
+4. Package and upload the new version
+
+For more information about Cloudsmith Helm repositories, see: https://help.cloudsmith.io/docs/helm-chart-repository
 
 ## Contributing
 

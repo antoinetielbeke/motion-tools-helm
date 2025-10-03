@@ -1,0 +1,43 @@
+{{- $fullName := include "motion-tools.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
+
+🚀 Motion Tools has been deployed successfully!
+
+1. Get the application URL by running these commands:
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else if contains "NodePort" .Values.service.type }}
+  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ $fullName }})
+  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
+  echo http://$NODE_IP:$NODE_PORT
+{{- else if contains "LoadBalancer" .Values.service.type }}
+     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ $fullName }}'
+  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ $fullName }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
+  echo http://$SERVICE_IP:{{ $svcPort }}
+{{- else }}
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ $fullName }} 8080:{{ $svcPort }}
+  echo "Visit http://127.0.0.1:8080 to use your application"
+{{- end }}
+
+2. Check the deployment status:
+  kubectl get pods --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+3. View logs:
+  kubectl logs --namespace {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }}
+
+{{- if .Values.mariadb.enabled }}
+4. Database connection (MariaDB):
+  kubectl get secret --namespace {{ .Release.Namespace }} {{ $fullName }}-mariadb -o jsonpath="{.data.mariadb-password}" | base64 --decode
+{{- end }}
+
+{{- if .Values.valkey.enabled }}
+5. Cache connection (Valkey):
+  kubectl get secret --namespace {{ .Release.Namespace }} {{ $fullName }}-valkey -o jsonpath="{.data.valkey-password}" | base64 --decode
+{{- end }}
+
+For more information about Motion Tools configuration, visit: https://motion.tools
