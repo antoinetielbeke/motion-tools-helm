@@ -148,6 +148,7 @@ The following table lists the configurable parameters and their default values.
 | Parameter | Description | Default |
 |-----------|-------------|---------|
 | `mariadb.enabled` | Deploy MariaDB | `true` |
+| `mariadb.image.tag` | MariaDB image tag (version) | `""` (uses CloudPirates chart default) |
 | `mariadb.auth.database` | Database name | `antragsgruen` |
 | `mariadb.auth.username` | Database user | `antragsgruen` |
 | `mariadb.auth.password` | Database password | `changeme` |
@@ -222,7 +223,7 @@ externalDatabase:
 
 ### Enabling Valkey Cache (Redis-compatible)
 
-This chart uses the CloudPirates Valkey Helm chart (v0.3.2) for Redis-compatible caching. The chart is available at `oci://registry-1.docker.io/cloudpirates/valkey`.
+This chart uses the CloudPirates Valkey Helm chart for Redis-compatible caching. The chart is available at `oci://registry-1.docker.io/cloudpirates/valkey`.
 
 For more information about the CloudPirates Valkey chart, see: https://github.com/CloudPirates-io/helm-charts/tree/main/charts/valkey
 
@@ -240,6 +241,9 @@ When using the bundled Valkey deployment:
 ```yaml
 valkey:
   enabled: true
+  # Specify Valkey image version
+  image:
+    tag: ""  # Uses CloudPirates chart default if not specified
   replicaCount: 1
   auth:
     enabled: true
@@ -299,6 +303,9 @@ resources:
     memory: 1Gi
 
 mariadb:
+  # Specify MariaDB image version
+  image:
+    tag: ""  # Uses CloudPirates chart default if not specified
   auth:
     existingSecret: db-credentials
   persistence:
@@ -485,6 +492,13 @@ helm install motion-tools \
 4. Package and upload the new version
 
 For more information about Cloudsmith Helm repositories, see: https://help.cloudsmith.io/docs/helm-chart-repository
+
+## Roadmap
+
+The following features are planned for future releases of this Helm chart:
+
+- [ ] Live Server Support: Integration with Motion Tools live collaboration features
+
 
 ## Contributing
 

@@ -28,7 +28,7 @@ data:
         "password": "SMTP_PASSWORD_PLACEHOLDER"
       },
       {{- else }}
-      "mailFromName": "Motion Tools",
+      "mailFromName": "Motion Tools sendmail",
       "mailFromEmail": "noreply@example.com",
       "mailService": {
         "transport": "sendmail"

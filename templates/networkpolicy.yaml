@@ -69,14 +69,7 @@ spec:
       - protocol: TCP
         port: {{ .Values.motionTools.valkey.port }}
     {{- end }}
-    {{- if and .Values.motionTools.liveServer.enabled }}
-    # Allow RabbitMQ connection
-    - ports:
-      - protocol: TCP
-        port: 5672
-      - protocol: TCP
-        port: 15672
-    {{- end }}
+
     # Allow HTTPS for external API calls
     - ports:
       - protocol: TCP

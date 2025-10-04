@@ -2,9 +2,6 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-# Motion Tools requires exactly one replica
-replicaCount: 1
-
 image:
   repository: devopsansiblede/antragsgruen
   pullPolicy: IfNotPresent
@@ -38,7 +35,7 @@ podSecurityContext:
 securityContext:
   capabilities:
     drop:
-    - ALL
+      - ALL
   readOnlyRootFilesystem: false
   allowPrivilegeEscalation: false
 
@@ -107,14 +104,6 @@ startupProbe:
   failureThreshold: 30
   successThreshold: 1
 
-# Autoscaling
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 80
-  targetMemoryUtilizationPercentage: 80
-
 # Volume configuration for persistent data
 # StatefulSet handles persistence through volumeClaimTemplates
 persistence:
@@ -130,12 +119,13 @@ persistence:
 # Motion Tools specific configuration
 motionTools:
   # Environment variables for the container
-  timezone: "Europe/Berlin"
+  timezone: "Europe/Amsterdam"
 
   # Apache FQDN configuration
   apacheFqdn: "motion.local"
 
   # SMTP Configuration
+  # if disabled, local sendmail is used
   smtp:
     enabled: true
     host: "mail.example.com"
@@ -162,11 +152,13 @@ motionTools:
   #     name: my-secret
 
   # Valkey configuration (optional, Redis-compatible)
+  # recommended for production
   valkey:
     enabled: false
     host: ""
     port: 6379
     database: 0
+    # Password should be provided via secrets
     password: ""
     existingSecret: ""
     secretKey: "valkey-password"
@@ -197,22 +189,14 @@ motionTools:
     enabled: false
     path: "/usr/bin/convert"
 
-  # Live server configuration (optional)
-  liveServer:
-    enabled: false
-    installationId: "std"
-    wsUri: ""
-    stompJsUri: ""
-    rabbitMqUri: ""
-    rabbitMqExchangeName: "antragsgruen-exchange"
-    rabbitMqUsername: "guest"
-    rabbitMqPassword: ""
-    rabbitMqExistingSecret: ""
-    rabbitMqSecretKey: "rabbitmq-password"
-
 # Valkey configuration (Redis-compatible in-memory data store) - CloudPirates chart
 valkey:
   enabled: false
+  # Image configuration for Valkey
+  image:
+    # Optional tag to override the default Valkey image version
+    # If not set, the CloudPirates chart default will be used
+    tag: ""
 
   # Number of Valkey replicas
   replicaCount: 1
@@ -271,6 +255,11 @@ valkey:
 # MariaDB configuration (CloudPirates chart)
 mariadb:
   enabled: true
+  # Image configuration for MariaDB
+  image:
+    # Optional tag to override the default MariaDB image version
+    # If not set, the CloudPirates chart default will be used
+    tag: ""
   auth:
     enabled: true
     rootPassword: "changeme"
@@ -341,6 +330,7 @@ sidecarContainers: []
 #   command: ['sh', '-c', 'while true; do echo sidecar; sleep 30; done']
 
 # Network policy
+# recommended for production
 networkPolicy:
   enabled: false
   policyTypes:
@@ -349,12 +339,6 @@ networkPolicy:
   ingress: []
   egress: []
 
-# Pod disruption budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
-
 # Priority class name
 priorityClassName: ""
 
@@ -362,6 +346,10 @@ priorityClassName: ""
 topologySpreadConstraints: []
 
 # Update strategy for StatefulSet
+# This controls how pods are updated during a rolling update
+# For a single-replica StatefulSet, this has minimal impact but is still required
+# - type: RollingUpdate - updates pods one at a time
+# - partition: 0 - all pods will be updated (in this case, just the one pod)
 updateStrategy:
   type: RollingUpdate
   # Note: maxSurge is not available for StatefulSets

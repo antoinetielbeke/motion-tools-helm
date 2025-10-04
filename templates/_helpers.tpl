@@ -186,17 +186,7 @@ Valkey secret name
 {{- end -}}
 {{- end -}}
 
-{{/*
-RabbitMQ secret name
-*/}}
-{{- define "motion-tools.rabbitMqSecretName" -}}
-{{- if .Values.motionTools.liveServer.rabbitMqExistingSecret -}}
-{{- .Values.motionTools.liveServer.rabbitMqExistingSecret -}}
-{{- else -}}
-{{- printf "%s-rabbitmq" (include "motion-tools.fullname" .) -}}
-{{- end -}}
-{{- end -}}
 
-{{/* 
+{{/*
 StatefulSet uses a predictable volume name pattern based on pod name
 */}}
