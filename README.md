@@ -24,7 +24,7 @@ A Helm chart for deploying [Motion Tools (Antragsgrün)](https://github.com/Cato
 
 ```bash
 # Add the Motion Tools repository hosted on Cloudsmith
-helm repo add tielbeke-motion-tools-helm https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/
+helm repo add tielbeke-motion-tools-helm 'https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/'
 helm repo update
 ```
 
@@ -193,17 +193,6 @@ The following table lists the configurable parameters and their default values.
 | `resources.requests.cpu` | CPU request | `250m` |
 | `resources.requests.memory` | Memory request | `512Mi` |
 
-### Autoscaling
-
-*Note: The Motion Tools application is designed for single-instance deployment.*
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `autoscaling.enabled` | Enable HPA (must be false) | `false` |
-| `autoscaling.minReplicas` | Min replicas | `1` |
-| `autoscaling.maxReplicas` | Max replicas | `10` |
-| `autoscaling.targetCPUUtilizationPercentage` | Target CPU % | `80` |
-
 ## Examples
 
 ### Using External Database
@@ -260,7 +249,6 @@ valkey:
 
 ```yaml
 # production-values.yaml
-replicaCount: 3
 
 image:
   tag: "v4.15.3"
@@ -321,7 +309,6 @@ networkPolicy:
 - **StatefulSet with Single Instance**: This chart uses a StatefulSet with exactly one replica
 - **No High Availability**: The application runs as a single StatefulSet pod
 - **Storage**: Uses `volumeClaimTemplates` with `ReadWriteOnce` access mode
-- **Session Management**: Not designed for distributed session handling
 
 ## Upgrading
 
