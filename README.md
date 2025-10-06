@@ -431,65 +431,15 @@ This Helm chart is provided as-is. Motion Tools (Antragsgrün) is licensed under
 
 ## Chart Repository Hosting
 
-This chart is hosted on Cloudsmith for easy distribution and installation.
-
-### Publishing to Cloudsmith
-
-To publish a new version of this chart to Cloudsmith:
-
-```bash
-# Package the chart
-helm package .
-
-# Upload to Cloudsmith (requires authentication)
-cloudsmith push helm tielbeke/motion-tools-helm motion-tools-0.1.0.tgz
-```
-
-### Repository Information
+This chart is hosted on Cloudsmith, an European artifact repository, for easy distribution and installation.
 
 - **Repository URL**: `https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/`
-- **Package Manager**: Helm
-- **Access**: Public
-- **Provider**: Cloudsmith
 
-### Alternative Installation Methods
-
-```bash
-# Method 1: Add repository first (recommended)
-helm repo add tielbeke-motion-tools-helm https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/
-helm repo update
-helm install motion-tools tielbeke-motion-tools-helm/motion-tools
-
-# Method 2: Direct install without adding repo
-helm install motion-tools \
-  --repo 'https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/' \
-  motion-tools
-
-# Method 3: Install specific version
-helm install motion-tools \
-  --repo 'https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/' \
-  motion-tools --version 0.1.0
-```
-
-### Updating Chart Versions
-
-1. Update the `version` in `Chart.yaml`
-2. Update `appVersion` if the application version changed
-3. Add change notes to `artifacthub.io/changes` annotation
-4. Package and upload the new version
-
-For more information about Cloudsmith Helm repositories, see: https://help.cloudsmith.io/docs/helm-chart-repository
-
-<<<<<<< HEAD
 ## Roadmap
 
 The following features are planned for future releases of this Helm chart:
 
 - [ ] Live Server Support: Integration with Motion Tools live collaboration features
-
-=======
-For more information about ArtifactHub, see: https://artifacthub.io/docs/topics/repositories/helm/
->>>>>>> 6c7d07c (Update to new cloudsmith url)
 
 ## Contributing
 
