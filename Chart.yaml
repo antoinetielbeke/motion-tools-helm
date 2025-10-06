@@ -19,6 +19,8 @@ annotations:
   artifacthub.io/category: "integration-delivery"
   artifacthub.io/license: "MIT"
   artifacthub.io/alternativeName: "motion-tools-antragsgruen"
+  artifacthub.io/readme: "true"
+  artifacthub.io/repository: "https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/"
   artifacthub.io/links: |
     - name: Motion Tools Website
       url: https://motion.tools

@@ -24,7 +24,7 @@ A Helm chart for deploying [Motion Tools (Antragsgrün)](https://github.com/Cato
 
 ```bash
 # Add the Motion Tools repository hosted on Cloudsmith
-helm repo add motion-tools https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/
+helm repo add tielbeke-motion-tools-helm https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/
 helm repo update
 ```
 
@@ -32,11 +32,11 @@ helm repo update
 
 ```bash
 # From repository
-helm install motion-tools motion-tools/motion-tools
+helm install motion-tools tielbeke-motion-tools-helm/motion-tools
 
 # Direct install without adding repository
 helm install motion-tools \
-  --repo 'https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/' \
+  --repo 'https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/' \
   motion-tools
 ```
 
@@ -44,11 +44,11 @@ helm install motion-tools \
 
 ```bash
 # From repository
-helm install motion-tools motion-tools/motion-tools -f custom-values.yaml
+helm install motion-tools tielbeke-motion-tools-helm/motion-tools -f custom-values.yaml
 
 # Direct install with custom values
 helm install motion-tools \
-  --repo 'https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/' \
+  --repo 'https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/' \
   motion-tools -f custom-values.yaml
 ```
 
@@ -56,7 +56,7 @@ helm install motion-tools \
 
 ```bash
 kubectl create namespace motion-tools
-helm install motion-tools motion-tools/motion-tools --namespace motion-tools
+helm install motion-tools tielbeke-motion-tools-helm/motion-tools --namespace motion-tools
 ```
 
 ## Testing with Kind
@@ -92,7 +92,7 @@ The test deployment includes:
 1. **Basic installation with integrated database:**
 
 ```bash
-helm install my-motion-tools motion-tools/motion-tools \
+helm install my-motion-tools tielbeke-motion-tools-helm/motion-tools \
   --set motionTools.apacheFqdn=motion.example.com \
   --set motionTools.smtp.host=smtp.example.com \
   --set motionTools.smtp.from=noreply@example.com \
@@ -103,7 +103,7 @@ helm install my-motion-tools motion-tools/motion-tools \
 2. **Production installation with Ingress and TLS:**
 
 ```bash
-helm install my-motion-tools motion-tools/motion-tools \
+helm install my-motion-tools tielbeke-motion-tools-helm/motion-tools \
   --set ingress.enabled=true \
   --set ingress.className=nginx \
   --set ingress.hosts[0].host=motion.example.com \
@@ -332,7 +332,7 @@ networkPolicy:
 kubectl exec -it deployment/motion-tools -- mysqldump -h localhost -u root -p antragsgruen > backup.sql
 
 # Upgrade from repository
-helm upgrade motion-tools motion-tools/motion-tools
+helm upgrade motion-tools tielbeke-motion-tools-helm/motion-tools
 
 # Or upgrade from source
 helm upgrade motion-tools .
@@ -460,7 +460,7 @@ cloudsmith push helm tielbeke/motion-tools-helm motion-tools-0.1.0.tgz
 
 ### Repository Information
 
-- **Repository URL**: `https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/`
+- **Repository URL**: `https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/`
 - **Package Manager**: Helm
 - **Access**: Public
 - **Provider**: Cloudsmith
@@ -469,18 +469,18 @@ cloudsmith push helm tielbeke/motion-tools-helm motion-tools-0.1.0.tgz
 
 ```bash
 # Method 1: Add repository first (recommended)
-helm repo add motion-tools https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/
+helm repo add tielbeke-motion-tools-helm https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/
 helm repo update
-helm install motion-tools motion-tools/motion-tools
+helm install motion-tools tielbeke-motion-tools-helm/motion-tools
 
 # Method 2: Direct install without adding repo
 helm install motion-tools \
-  --repo 'https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/' \
+  --repo 'https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/' \
   motion-tools
 
 # Method 3: Install specific version
 helm install motion-tools \
-  --repo 'https://dl.cloudsmith.io/gD4hJYGsq4zGYdnQ/tielbeke/motion-tools-helm/helm/charts/' \
+  --repo 'https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/' \
   motion-tools --version 0.1.0
 ```
 
@@ -493,12 +493,16 @@ helm install motion-tools \
 
 For more information about Cloudsmith Helm repositories, see: https://help.cloudsmith.io/docs/helm-chart-repository
 
+<<<<<<< HEAD
 ## Roadmap
 
 The following features are planned for future releases of this Helm chart:
 
 - [ ] Live Server Support: Integration with Motion Tools live collaboration features
 
+=======
+For more information about ArtifactHub, see: https://artifacthub.io/docs/topics/repositories/helm/
+>>>>>>> 6c7d07c (Update to new cloudsmith url)
 
 ## Contributing
 
