@@ -6,7 +6,7 @@ A Helm chart for deploying [Motion Tools (Antragsgrün)](https://github.com/Cato
 
 - **Easy Deployment**: Simple installation with sensible defaults
 - **Database Management**: Integrated MariaDB or external database support
-- **Persistent Storage**: Data persistence across pod restarts
+- **Caching**: (optional) Built-in caching configurations for improved performance
 - **Security**: Built-in security configurations and network policies
 - **Monitoring**: Health checks and probes configured
 - **Customizable**: Extensive configuration options for all components
