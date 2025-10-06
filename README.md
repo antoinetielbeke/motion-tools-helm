@@ -1,3 +1,5 @@
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/motion-tools)](https://artifacthub.io/packages/search?repo=motion-tools)
+
 # Motion Tools Helm Chart
 
 A Helm chart for deploying [Motion Tools (Antragsgrün)](https://github.com/CatoTH/antragsgruen) on Kubernetes. Motion Tools is an online platform for NGOs, political parties, and social initiatives to collaboratively discuss resolutions, party platforms, and amendments.
