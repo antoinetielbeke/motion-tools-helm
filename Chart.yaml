@@ -59,5 +59,3 @@ dependencies:
     version: "0.6.0"
     repository: oci://registry-1.docker.io/cloudpirates
     condition: valkey.enabled
-    alias: valkey
-    import-values: []
