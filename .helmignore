@@ -1,39 +1,77 @@
 # Patterns to ignore when building packages.
 # This supports shell glob matching, relative path matching, and
 # negation (prefixed with !). Only one pattern per line.
+
+# Development and editor files
 .DS_Store
-# Common VCS dirs
-.git/
-.gitignore
-.bzr/
-.bzrignore
-.hg/
-.hgignore
-.svn/
-# Common backup files
 *.swp
 *.bak
 *.tmp
 *.orig
 *~
-# Various IDEs
 .project
 .idea/
 *.tmproj
 .vscode/
-# Project specific
-*.md
-LICENSE
-docs/
-examples/
-tests/
+*.code-workspace
+
+# Version control
+.git/
+.gitignore
+.gitattributes
+.bzr/
+.bzrignore
+.hg/
+.hgignore
+.svn/
+
+# CI/CD
 .github/
 .gitlab-ci.yml
 .travis.yml
-Makefile
-# Helm specific
-requirements.lock
-# Other
-*.log
-.env
+.circleci/
+.jenkins/
+Jenkinsfile
+
+# Documentation (keep README.md for Artifact Hub)
+AGENTS.md
+docs/
+examples/
+
+# Testing
+tests/
+test/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# Build artifacts
+dist/
+build/
+*.tgz
+*.tar.gz
+
+# Dependencies
 node_modules/
+vendor/
+
+# Logs
+*.log
+logs/
+
+# Environment and secrets
+.env
+.env.*
+*.key
+*.pem
+secrets/
+
+# Other
+Makefile
+*.mk
+requirements.lock
+Chart.lock.backup
+values-test*.yaml
+values-local*.yaml
+kind-config.yaml
