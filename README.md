@@ -26,7 +26,7 @@ A Helm chart for deploying [Motion Tools (Antragsgrün)](https://github.com/Cato
 
 ```bash
 # Add the Motion Tools repository hosted on Cloudsmith
-helm repo add tielbeke-motion-tools-helm 'https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/'
+helm repo add tielbeke-motion-tools-helm 'https://dl.cloudsmith.io/public/tielbeke/tielbeke/helm/charts/'
 helm repo update
 ```
 
@@ -38,7 +38,7 @@ helm install motion-tools tielbeke-motion-tools-helm/motion-tools
 
 # Direct install without adding repository
 helm install motion-tools \
-  --repo 'https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/' \
+  --repo 'https://dl.cloudsmith.io/public/tielbeke/tielbeke/helm/charts/' \
   motion-tools
 ```
 
@@ -50,7 +50,7 @@ helm install motion-tools tielbeke-motion-tools-helm/motion-tools -f custom-valu
 
 # Direct install with custom values
 helm install motion-tools \
-  --repo 'https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/' \
+  --repo 'https://dl.cloudsmith.io/public/tielbeke/tielbeke/helm/charts/' \
   motion-tools -f custom-values.yaml
 ```
 
@@ -435,7 +435,7 @@ This Helm chart is provided as-is. Motion Tools (Antragsgrün) is licensed under
 
 This chart is hosted on Cloudsmith, an European artifact repository, for easy distribution and installation.
 
-- **Repository URL**: `https://dl.cloudsmith.io/public/tielbeke/motion-tools-helm/helm/charts/`
+- **Repository URL**: `https://dl.cloudsmith.io/public/tielbeke/tielbeke/helm/charts/`
 
 ## Roadmap
 
