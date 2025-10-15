@@ -49,7 +49,6 @@ test/
 # Build artifacts
 dist/
 build/
-*.tgz
 *.tar.gz
 
 # Dependencies

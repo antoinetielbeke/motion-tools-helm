@@ -59,20 +59,6 @@ data:
       {{- end }}
       {{- end }}
 
-      {{- if .Values.motionTools.liveServer.enabled }}
-      "live": {
-        "installationId": "{{ .Values.motionTools.liveServer.installationId | default "std" }}",
-        "wsUri": "{{ .Values.motionTools.liveServer.wsUri }}",
-        "stompJsUri": "{{ .Values.motionTools.liveServer.stompJsUri }}",
-        "rabbitMqUri": "{{ .Values.motionTools.liveServer.rabbitMqUri }}",
-        "rabbitMqExchangeName": "{{ .Values.motionTools.liveServer.rabbitMqExchangeName }}",
-        "rabbitMqUsername": "{{ .Values.motionTools.liveServer.rabbitMqUsername }}"
-        {{- if .Values.motionTools.liveServer.rabbitMqPassword }},
-        "rabbitMqPassword": "RABBITMQ_PASSWORD_PLACEHOLDER"
-        {{- end }}
-      },
-      {{- end }}
-
       {{- if .Values.motionTools.pdfRendering.engine }}
       {{- if eq .Values.motionTools.pdfRendering.engine "weasyprint" }}
       "weasyprintPath": "{{ .Values.motionTools.pdfRendering.weasyprintPath }}",

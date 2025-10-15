@@ -141,7 +141,6 @@ spec:
             requests:
               cpu: 50m
               memory: 64Mi
-      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}
