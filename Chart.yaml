@@ -52,7 +52,7 @@ maintainers:
     email: antoine@tielbeke.io
 dependencies:
   - name: mariadb
-    version: "0.5.0"
+    version: "0.5.1"
     repository: oci://registry-1.docker.io/cloudpirates
     condition: mariadb.enabled
   - name: valkey
