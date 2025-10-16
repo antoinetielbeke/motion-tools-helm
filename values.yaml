@@ -192,12 +192,6 @@ motionTools:
 # Valkey configuration (Redis-compatible in-memory data store) - CloudPirates chart
 valkey:
   enabled: false
-  # Image configuration for Valkey
-  image:
-    # Optional tag to override the default Valkey image version
-    # If not set, the CloudPirates chart default will be used
-    tag: ""
-
   # Number of Valkey replicas
   replicaCount: 1
 
@@ -255,11 +249,6 @@ valkey:
 # MariaDB configuration (CloudPirates chart)
 mariadb:
   enabled: true
-  # Image configuration for MariaDB
-  image:
-    # Optional tag to override the default MariaDB image version
-    # If not set, the CloudPirates chart default will be used
-    tag: ""
   auth:
     enabled: true
     rootPassword: "changeme"
