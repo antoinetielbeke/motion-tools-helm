@@ -125,19 +125,20 @@ motionTools:
   apacheFqdn: "motion.local"
 
   # SMTP Configuration
-  # if disabled, local sendmail is used
+  # If disabled, local sendmail is used
+  # To enable SMTP, uncomment and configure the parameters below
   smtp:
-    enabled: true
-    host: "mail.example.com"
-    port: 587
-    from: "motiontool@example.com"
-    user: "motiontool@example.com"
+    enabled: false
+    # host: "mail.example.com"
+    # port: 587
+    # from: "motiontool@example.com"
+    # user: "motiontool@example.com"
     # Password should be provided via secrets
-    password: ""
+    # password: ""
     # Use existing secret for SMTP password
-    existingSecret: ""
+    # existingSecret: ""
     # Key in the secret containing the password
-    secretKey: "smtp-password"
+    # secretKey: "smtp-password"
 
   # Additional environment variables
   extraEnvVars: []

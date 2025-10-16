@@ -96,13 +96,30 @@ The test deployment includes:
 ```bash
 helm install my-motion-tools tielbeke-motion-tools-helm/motion-tools \
   --set motionTools.apacheFqdn=motion.example.com \
-  --set motionTools.smtp.host=smtp.example.com \
-  --set motionTools.smtp.from=noreply@example.com \
-  --set motionTools.smtp.password=secretpassword \
   --set mariadb.auth.password=dbpassword
 ```
 
-2. **Production installation with Ingress and TLS:**
+2. **Installation with Valkey cache, MariaDB, and SMTP:**
+
+```bash
+helm install my-motion-tools tielbeke-motion-tools-helm/motion-tools \
+  --set motionTools.apacheFqdn=motion.example.com \
+  --set mariadb.auth.password=dbpassword \
+  --set mariadb.auth.rootPassword=rootpassword \
+  --set valkey.enabled=true \
+  --set valkey.auth.password=valkeypassword \
+  --set motionTools.valkey.enabled=true \
+  --set motionTools.valkey.password=valkeypassword \
+  --set motionTools.smtp.enabled=true \
+  --set motionTools.smtp.host=smtp.example.com \
+  --set motionTools.smtp.port=587 \
+  --set motionTools.smtp.from=noreply@example.com \
+  --set motionTools.smtp.user=noreply@example.com \
+  --set motionTools.smtp.password=smtppassword \
+  --set motionTools.smtp.secretKey=smtp-password
+```
+
+3. **Production installation with Ingress and TLS:**
 
 ```bash
 helm install my-motion-tools tielbeke-motion-tools-helm/motion-tools \
@@ -135,9 +152,9 @@ The following table lists the configurable parameters and their default values.
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `motionTools.timezone` | Application timezone | `Europe/Berlin` |
+| `motionTools.timezone` | Application timezone | `Europe/Amsterdam` |
 | `motionTools.apacheFqdn` | Apache FQDN | `motion.local` |
-| `motionTools.smtp.enabled` | Enable SMTP | `true` |
+| `motionTools.smtp.enabled` | Enable SMTP (if disabled, local sendmail is used) | `false` |
 | `motionTools.smtp.host` | SMTP host | `mail.example.com` |
 | `motionTools.smtp.port` | SMTP port | `587` |
 | `motionTools.smtp.from` | From email address | `motiontool@example.com` |
