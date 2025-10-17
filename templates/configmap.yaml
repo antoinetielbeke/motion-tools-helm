@@ -15,6 +15,7 @@ data:
         "username": "{{ include "motion-tools.databaseUser" . }}",
         "password": "DB_PASSWORD_PLACEHOLDER"
       },
+      "cookieValidationKey": "{{ randAlphaNum 32 }}",
       "debug": {{ .Values.debug | default false }},
 
       {{- if .Values.motionTools.smtp.enabled }}
@@ -72,7 +73,6 @@ data:
       "imageMagickPath": "{{ .Values.motionTools.imageMagick.path }}",
       {{- end }}
 
-      "dbConnection": "mysql",
       "confirmEmailAddresses": true,
       "domainPlain": "https://{{ .Values.motionTools.apacheFqdn }}/",
       "domainSubdomain": "https://{{ .Values.motionTools.apacheFqdn }}/",

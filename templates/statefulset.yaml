@@ -45,6 +45,33 @@ spec:
         {{- with .Values.initContainers }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+        {{- if .Values.persistence.enabled }}
+        - name: install-app
+          image: {{ include "motion-tools.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              # Only copy if the persistent volume is empty (first run)
+              if [ ! -f /data/index.php ]; then
+                echo "Initializing persistent volume with application files..."
+                cp -a /var/www/html/. /data/
+                echo "Application files copied to persistent volume!"
+              else
+                echo "Persistent volume already initialized, skipping."
+              fi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+        {{- end }}
         {{- if or .Values.mariadb.enabled .Values.valkey.enabled }}
         - name: wait-for-dependencies
           image: busybox:1.36
