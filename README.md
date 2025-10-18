@@ -8,10 +8,9 @@ A Helm chart for deploying [Motion Tools (Antragsgrün)](https://github.com/Cato
 
 - **Easy Deployment**: Simple installation with sensible defaults
 - **Database Management**: Integrated MariaDB or external database support
-- **Caching**: (optional) Built-in caching configurations for improved performance
 - **Security**: Built-in security configurations and network policies
 - **Monitoring**: Health checks and probes configured
-- **Customizable**: Extensive configuration options for all components
+- **Customizable**: Extensive configuration options via environment variables
 
 ## Prerequisites
 
@@ -86,7 +85,6 @@ kubectl logs -l app.kubernetes.io/name=motion-tools
 The test deployment includes:
 - Motion Tools application with minimal resources
 - MariaDB database (without persistence for faster testing)
-- Valkey cache (CloudPirates chart v0.3.2)
 - All services configured for local development
 
 ## Quick Start
@@ -99,24 +97,19 @@ helm install my-motion-tools tielbeke-motion-tools-helm/motion-tools \
   --set mariadb.auth.password=dbpassword
 ```
 
-2. **Installation with Valkey cache, MariaDB, and SMTP:**
+2. **Installation with SMTP:**
 
 ```bash
 helm install my-motion-tools tielbeke-motion-tools-helm/motion-tools \
   --set motionTools.apacheFqdn=motion.example.com \
   --set mariadb.auth.password=dbpassword \
   --set mariadb.auth.rootPassword=rootpassword \
-  --set valkey.enabled=true \
-  --set valkey.auth.password=valkeypassword \
-  --set motionTools.valkey.enabled=true \
-  --set motionTools.valkey.password=valkeypassword \
   --set motionTools.smtp.enabled=true \
   --set motionTools.smtp.host=smtp.example.com \
   --set motionTools.smtp.port=587 \
   --set motionTools.smtp.from=noreply@example.com \
   --set motionTools.smtp.user=noreply@example.com \
-  --set motionTools.smtp.password=smtppassword \
-  --set motionTools.smtp.secretKey=smtp-password
+  --set motionTools.smtp.password=smtppassword
 ```
 
 3. **Production installation with Ingress and TLS:**
@@ -158,9 +151,8 @@ The following table lists the configurable parameters and their default values.
 | `motionTools.smtp.host` | SMTP host | `mail.example.com` |
 | `motionTools.smtp.port` | SMTP port | `587` |
 | `motionTools.smtp.from` | From email address | `motiontool@example.com` |
+| `motionTools.smtp.user` | SMTP user | `motiontool@example.com` |
 | `motionTools.smtp.password` | SMTP password | `""` |
-| `motionTools.php.memoryLimit` | PHP memory limit | `256M` |
-| `motionTools.php.maxExecutionTime` | PHP max execution time | `300` |
 
 ### Database Configuration
 
@@ -227,41 +219,6 @@ externalDatabase:
   database: motiontools
   username: motionuser
   password: secretpassword
-```
-
-### Enabling Valkey Cache (Redis-compatible)
-
-This chart uses the CloudPirates Valkey Helm chart for Redis-compatible caching. The chart is available at `oci://registry-1.docker.io/cloudpirates/valkey`.
-
-For more information about the CloudPirates Valkey chart, see: https://github.com/CloudPirates-io/helm-charts/tree/main/charts/valkey
-
-```yaml
-motionTools:
-  valkey:
-    enabled: true
-    host: valkey.example.com
-    port: 6379
-    password: valkeypassword
-```
-
-When using the bundled Valkey deployment:
-
-```yaml
-valkey:
-  enabled: true
-  # Specify Valkey image version
-  image:
-    tag: ""  # Uses CloudPirates chart default if not specified
-  replicaCount: 1
-  auth:
-    enabled: true
-    password: "changeme"
-    # Use existing secret for password
-    existingSecret: ""
-    existingSecretPasswordKey: "password"
-  config:
-    maxMemory: "256mb"
-    maxMemoryPolicy: "allkeys-lru"
 ```
 
 ### Production Configuration
@@ -398,9 +355,6 @@ kubectl get pods -l app.kubernetes.io/instance=motion-tools
 # Test database connectivity
 kubectl exec deployment/motion-tools -- nc -z motion-tools-mariadb 3306
 
-# Test Valkey connectivity (if enabled)
-kubectl exec deployment/motion-tools -- nc -z motion-tools-valkey 6379
-
 # Test application response
 kubectl exec deployment/motion-tools -- curl -s -I http://localhost/
 
@@ -411,32 +365,11 @@ kubectl logs deployment/motion-tools --tail=50
 Expected healthy status:
 - All pods should be in `Running` state with `1/1` ready
 - HTTP response should return `200 OK`
-- No error messages in application logs related to database or cache connectivity
+- No error messages in application logs related to database connectivity
 
-## Advanced Features
+## Configuration Philosophy
 
-### Background Jobs
-
-Enable background job processing for improved performance:
-
-```yaml
-motionTools:
-  backgroundJobs:
-    enabled: true
-    notifications: true
-    healthCheckKey: "your-health-check-key"
-```
-
-### PDF Rendering
-
-Configure advanced PDF rendering engines:
-
-```yaml
-motionTools:
-  pdfRendering:
-    engine: weasyprint  # Options: tcpdf, weasyprint, latex
-    weasyprintPath: /usr/bin/weasyprint
-```
+This Helm chart follows the docker-compose approach where the application is configured primarily through environment variables (TIMEZONE, APACHE_FQDN, SMTP settings). Advanced features like caching, PDF rendering, and background jobs are configured through the application's web interface or config.json file, which the Docker image manages internally.
 
 ## Support
 
@@ -458,7 +391,7 @@ This chart is hosted on Cloudsmith, an European artifact repository, for easy di
 
 The following features are planned for future releases of this Helm chart:
 
-- [ ] Live Server Support: Integration with Motion Tools live collaboration features
+- [ ] Make config.json configurable via Helm values
 
 ## Contributing
 

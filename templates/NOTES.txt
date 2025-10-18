@@ -35,9 +35,4 @@
   kubectl get secret --namespace {{ .Release.Namespace }} {{ $fullName }}-mariadb -o jsonpath="{.data.mariadb-password}" | base64 --decode
 {{- end }}
 
-{{- if .Values.valkey.enabled }}
-5. Cache connection (Valkey):
-  kubectl get secret --namespace {{ .Release.Namespace }} {{ $fullName }}-valkey -o jsonpath="{.data.valkey-password}" | base64 --decode
-{{- end }}
-
 For more information about Motion Tools configuration, visit: https://motion.tools
