@@ -19,7 +19,6 @@ spec:
     metadata:
       annotations:
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -45,8 +44,38 @@ spec:
         {{- with .Values.initContainers }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-        {{- if or .Values.mariadb.enabled .Values.valkey.enabled }}
-        - name: wait-for-dependencies
+        {{- if .Values.persistence.enabled }}
+        # Init container to copy application files from the Docker image to the persistent volume
+        # This is needed because unlike docker-compose, Kubernetes PersistentVolumes start empty
+        # and don't automatically populate from the image. This only runs on first deployment.
+        - name: install-app
+          image: {{ include "motion-tools.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - sh
+            - -c
+            - |
+              # Only copy if the persistent volume is empty (first run)
+              if [ ! -f /data/index.php ]; then
+                echo "Initializing persistent volume with application files..."
+                cp -a /var/www/html/. /data/
+                echo "Application files copied to persistent volume!"
+              else
+                echo "Persistent volume already initialized, skipping."
+              fi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+        {{- end }}
+        {{- if .Values.mariadb.enabled }}
+        - name: wait-for-database
           image: busybox:1.36
           imagePullPolicy: IfNotPresent
           {{- with .Values.securityContext }}
@@ -57,20 +86,11 @@ spec:
             - sh
             - -c
             - |
-              {{- if .Values.mariadb.enabled }}
               until nc -z {{ include "motion-tools.databaseHost" . }} {{ include "motion-tools.databasePort" . }}; do
                 echo "Waiting for database to be ready..."
                 sleep 5
               done
               echo "Database is ready!"
-              {{- end }}
-              {{- if .Values.valkey.enabled }}
-              until nc -z {{ include "motion-tools.valkeyHost" . }} {{ .Values.motionTools.valkey.port | default 6379 }}; do
-                echo "Waiting for Valkey to be ready..."
-                sleep 5
-              done
-              echo "Valkey is ready!"
-              {{- end }}
               exit 0
           resources:
             limits:
@@ -80,67 +100,6 @@ spec:
               cpu: 50m
               memory: 64Mi
         {{- end }}
-        - name: config-init
-          image: busybox:1.36
-          imagePullPolicy: IfNotPresent
-          {{- with .Values.securityContext }}
-          securityContext:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          command:
-            - sh
-            - -c
-            - |
-              mkdir -p /var/www/html/config
-              cp /config-template/config.json /var/www/html/config/
-
-              # Replace placeholders with actual values
-              sed -i "s/DB_PASSWORD_PLACEHOLDER/$DB_PASSWORD/g" /var/www/html/config/config.json
-
-              {{- if and .Values.motionTools.valkey.enabled .Values.motionTools.valkey.password }}
-              sed -i "s/REDIS_PASSWORD_PLACEHOLDER/$REDIS_PASSWORD/g" /var/www/html/config/config.json
-              {{- end }}
-
-              {{- if and .Values.motionTools.smtp.enabled .Values.motionTools.smtp.password }}
-              sed -i "s/SMTP_PASSWORD_PLACEHOLDER/$SMTP_PASSWORD/g" /var/www/html/config/config.json
-              {{- end }}
-
-
-
-              echo "Configuration file prepared."
-          env:
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "motion-tools.databaseSecretName" . }}
-                  key: {{ include "motion-tools.databaseSecretPasswordKey" . }}
-            {{- if and .Values.motionTools.valkey.enabled .Values.motionTools.valkey.password }}
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "motion-tools.valkeySecretName" . }}
-                  key: {{ .Values.motionTools.valkey.secretKey }}
-            {{- end }}
-            {{- if and .Values.motionTools.smtp.enabled .Values.motionTools.smtp.password }}
-            - name: SMTP_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "motion-tools.smtpSecretName" . }}
-                  key: {{ .Values.motionTools.smtp.secretKey }}
-            {{- end }}
-
-          volumeMounts:
-            - name: config-volume
-              mountPath: /config-template
-            - name: data
-              mountPath: /var/www/html
-          resources:
-            limits:
-              cpu: 100m
-              memory: 128Mi
-            requests:
-              cpu: 50m
-              memory: 64Mi
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}
@@ -162,21 +121,6 @@ spec:
             - name: APACHE_FQDN
               value: {{ .Values.motionTools.apacheFqdn | quote }}
 
-            # Database configuration
-            - name: DB_HOST
-              value: {{ include "motion-tools.databaseHost" . }}
-            - name: DB_PORT
-              value: {{ include "motion-tools.databasePort" . | quote }}
-            - name: DB_NAME
-              value: {{ include "motion-tools.databaseName" . }}
-            - name: DB_USER
-              value: {{ include "motion-tools.databaseUser" . }}
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "motion-tools.databaseSecretName" . }}
-                  key: {{ include "motion-tools.databaseSecretPasswordKey" . }}
-
             {{- if .Values.motionTools.smtp.enabled }}
             # SMTP configuration
             - name: SMTP_HOST
@@ -192,65 +136,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "motion-tools.smtpSecretName" . }}
                   key: {{ .Values.motionTools.smtp.secretKey }}
-            {{- end }}
-
-            {{- if .Values.motionTools.valkey.enabled }}
-            # Valkey configuration (Redis-compatible) is handled via config.json
-            # Environment variables are kept for backward compatibility
-            - name: REDIS_HOST
-              value: {{ include "motion-tools.valkeyHost" . | quote }}
-            - name: REDIS_PORT
-              value: {{ .Values.motionTools.valkey.port | quote }}
-            - name: REDIS_DATABASE
-              value: {{ .Values.motionTools.valkey.database | quote }}
-            {{- if .Values.motionTools.valkey.password }}
-            - name: REDIS_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "motion-tools.valkeySecretName" . }}
-                  key: {{ .Values.motionTools.valkey.secretKey }}
-            {{- end }}
-            {{- end }}
-
-            {{- if .Values.motionTools.imageMagick.enabled }}
-            # ImageMagick configuration
-            - name: IMAGEMAGICK_PATH
-              value: {{ .Values.motionTools.imageMagick.path | quote }}
-            {{- end }}
-
-            {{- if .Values.motionTools.pdfRendering.engine }}
-            # PDF rendering configuration
-            - name: PDF_ENGINE
-              value: {{ .Values.motionTools.pdfRendering.engine | quote }}
-            {{- if eq .Values.motionTools.pdfRendering.engine "weasyprint" }}
-            - name: WEASYPRINT_PATH
-              value: {{ .Values.motionTools.pdfRendering.weasyprintPath | quote }}
-            {{- else if eq .Values.motionTools.pdfRendering.engine "latex" }}
-            - name: LUALATEX_PATH
-              value: {{ .Values.motionTools.pdfRendering.lualatexPath | quote }}
-            - name: PDFUNITE_PATH
-              value: {{ .Values.motionTools.pdfRendering.pdfunitePath | quote }}
-            {{- end }}
-            {{- end }}
-
-            {{- if .Values.motionTools.backgroundJobs.enabled }}
-            # Background jobs configuration
-            - name: BACKGROUND_JOBS_ENABLED
-              value: "true"
-            - name: BACKGROUND_JOBS_NOTIFICATIONS
-              value: {{ .Values.motionTools.backgroundJobs.notifications | quote }}
-            {{- if .Values.motionTools.backgroundJobs.healthCheckKey }}
-            - name: HEALTH_CHECK_KEY
-              value: {{ .Values.motionTools.backgroundJobs.healthCheckKey | quote }}
-            {{- end }}
-            {{- end }}
-
-
-
-            {{- if .Values.debug }}
-            # Debug mode
-            - name: DEBUG
-              value: "true"
             {{- end }}
 
             {{- with .Values.motionTools.extraEnvVars }}
@@ -289,11 +174,6 @@ spec:
               subPath: {{ .Values.persistence.subPath }}
               {{- end }}
 
-            {{- if .Values.motionTools.jwt.enabled }}
-            - name: jwt-key
-              mountPath: {{ .Values.motionTools.jwt.privateKeyPath | dir }}
-              readOnly: true
-            {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -303,16 +183,6 @@ spec:
         {{- end }}
 
       volumes:
-        - name: config-volume
-          configMap:
-            name: {{ include "motion-tools.fullname" . }}
-
-        {{- if .Values.motionTools.jwt.enabled }}
-        - name: jwt-key
-          secret:
-            secretName: {{ .Values.motionTools.jwt.privateKeySecret }}
-            defaultMode: 0400
-        {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
