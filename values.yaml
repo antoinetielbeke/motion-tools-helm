@@ -152,6 +152,15 @@ motionTools:
   # - secretRef:
   #     name: my-secret
 
+# PHP Configuration
+php:
+  # PHP configuration parameters
+  uploadMaxFilesize: "500M"
+  postMaxSize: "500M"
+  maxExecutionTime: 60
+  memoryLimit: "768M"
+  maxInputTime: 60
+
 # Valkey configuration (Redis-compatible in-memory data store) - CloudPirates chart
 valkey:
   enabled: false

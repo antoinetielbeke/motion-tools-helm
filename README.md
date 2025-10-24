@@ -130,6 +130,16 @@ helm install my-motion-tools tielbeke-motion-tools-helm/motion-tools \
 
 The following table lists the configurable parameters and their default values.
 
+### PHP Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `php.uploadMaxFilesize` | Maximum upload file size | `500M` |
+| `php.postMaxSize` | Maximum POST data size | `500M` |
+| `php.maxExecutionTime` | Maximum execution time in seconds | `60` |
+| `php.memoryLimit` | Memory limit for PHP scripts | `768M` |
+| `php.maxInputTime` | Maximum input parsing time in seconds | `60` |
+
 ### Global Parameters
 
 | Parameter | Description | Default |
