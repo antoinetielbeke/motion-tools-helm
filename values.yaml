@@ -152,44 +152,6 @@ motionTools:
   # - secretRef:
   #     name: my-secret
 
-  # Valkey configuration (optional, Redis-compatible)
-  # recommended for production
-  valkey:
-    enabled: false
-    host: ""
-    port: 6379
-    database: 0
-    # Password should be provided via secrets
-    password: ""
-    existingSecret: ""
-    secretKey: "valkey-password"
-
-  # JWT configuration (optional)
-  jwt:
-    enabled: false
-    # Private key should be mounted from secret
-    privateKeySecret: ""
-    privateKeyPath: "/var/www/html/config/jwt.key"
-
-  # Background jobs configuration
-  backgroundJobs:
-    enabled: false
-    notifications: true
-    healthCheckKey: ""
-
-  # PDF rendering configuration
-  pdfRendering:
-    # Options: tcpdf, weasyprint, latex
-    engine: "tcpdf"
-    weasyprintPath: "/usr/bin/weasyprint"
-    lualatexPath: "/usr/bin/lualatex"
-    pdfunitePath: "/usr/bin/pdfunite"
-
-  # ImageMagick configuration
-  imageMagick:
-    enabled: false
-    path: "/usr/bin/convert"
-
 # Valkey configuration (Redis-compatible in-memory data store) - CloudPirates chart
 valkey:
   enabled: false
