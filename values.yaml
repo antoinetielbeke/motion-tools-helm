@@ -173,7 +173,7 @@ valkey:
     password: "changeme"
     # Use existing secret for password
     existingSecret: ""
-    existingSecretPasswordKey: "password"
+    existingSecretPasswordKey: ""
 
   # Valkey configuration
   config:
