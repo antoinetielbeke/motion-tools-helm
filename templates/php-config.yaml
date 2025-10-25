@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: php-config
+  namespace: motion-tools
+data:
+  php.ini: |
+    ; PHP Configuration for Antragsgruen
+    ; Increase upload limits for large PDF files
+
+    ; IMPORTANT: Set memory_limit to 70-80% of your Kubernetes pod memory limit
+    ; Examples:
+    ;   - Pod limit 512Mi  -> memory_limit = 384M
+    ;   - Pod limit 1Gi    -> memory_limit = 768M
+    ;   - Pod limit 2Gi    -> memory_limit = 1536M
+    ; Never use -1 (unlimited) in containerized environments!
+
+    upload_max_filesize = {{ .Values.php.uploadMaxFilesize }}
+    post_max_size = {{ .Values.php.postMaxSize }}
+    max_execution_time = {{ .Values.php.maxExecutionTime }}
+    memory_limit = {{ .Values.php.memoryLimit }}
+    max_input_time = {{ .Values.php.maxInputTime }}
