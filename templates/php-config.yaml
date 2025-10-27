@@ -1,8 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: php-config
-  namespace: motion-tools
+  name: {{ include "motion-tools.fullname" . }}-php-config
+  labels:
+    {{- include "motion-tools.labels" . | nindent 4 }}
 data:
   php.ini: |
     ; PHP Configuration for Antragsgruen
