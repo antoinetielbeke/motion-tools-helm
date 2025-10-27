@@ -133,6 +133,8 @@ motionTools:
     # port: 587
     # from: "motiontool@example.com"
     # user: "motiontool@example.com"
+    # Enable TLS (recommended for port 587)
+    # tls: true
     # Password should be provided via secrets
     # password: ""
     # Use existing secret for SMTP password
