@@ -136,6 +136,10 @@ spec:
                 secretKeyRef:
                   name: {{ include "motion-tools.smtpSecretName" . }}
                   key: {{ .Values.motionTools.smtp.secretKey }}
+            {{- if .Values.motionTools.smtp.tls }}
+            - name: SMTP_TLS
+              value: "true"
+            {{- end }}
             {{- end }}
 
             {{- with .Values.motionTools.extraEnvVars }}
