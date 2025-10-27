@@ -173,6 +173,9 @@ spec:
               {{- if .Values.persistence.subPath }}
               subPath: {{ .Values.persistence.subPath }}
               {{- end }}
+            - name: php-config
+              mountPath: /usr/local/etc/php/conf.d/php.ini
+              subPath: php.ini
 
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
@@ -183,6 +186,9 @@ spec:
         {{- end }}
 
       volumes:
+        - name: php-config
+          configMap:
+            name: {{ include "motion-tools.fullname" . }}-php-config
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
