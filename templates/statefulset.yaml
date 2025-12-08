@@ -44,31 +44,6 @@ spec:
         {{- with .Values.initContainers }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-        {{- if .Values.motionTools.smtp.enabled }}
-        # Init container to fix msmtprc template by adding auth line
-        # This fixes the missing "auth login" line in the Docker image template
-        - name: fix-msmtp-template
-          image: {{ include "motion-tools.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command:
-            - sh
-            - -c
-            - |
-              echo "Fixing msmtprc template to add auth line..."
-              if [ -f /templates/msmtprc.j2 ] && ! grep -q "^auth" /templates/msmtprc.j2; then
-                sed -i '/^password {{ "{{" }} SMTP_PASS {{ "}}" }}/a \\nauth     login' /templates/msmtprc.j2
-                echo "Auth line added to msmtprc template!"
-              else
-                echo "Auth line already exists or template not found."
-              fi
-          resources:
-            limits:
-              cpu: 100m
-              memory: 128Mi
-            requests:
-              cpu: 50m
-              memory: 64Mi
-        {{- end }}
         {{- if .Values.persistence.enabled }}
         # Init container to copy application files from the Docker image to the persistent volume
         # This is needed because unlike docker-compose, Kubernetes PersistentVolumes start empty
