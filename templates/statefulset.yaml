@@ -112,6 +112,26 @@ spec:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
               protocol: TCP
+          {{- if .Values.motionTools.smtp.enabled }}
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    # Wait for msmtprc to be created by entrypoint, then add auth line
+                    for i in $(seq 1 30); do
+                      if [ -f /etc/msmtprc ]; then
+                        if ! grep -q "^auth" /etc/msmtprc; then
+                          sed -i '/^password/a auth     login' /etc/msmtprc
+                          echo "Added auth line to /etc/msmtprc"
+                        fi
+                        break
+                      fi
+                      sleep 1
+                    done
+          {{- end }}
           env:
             # Timezone configuration
             - name: TIMEZONE
