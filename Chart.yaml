@@ -56,6 +56,6 @@ dependencies:
     repository: oci://registry-1.docker.io/cloudpirates
     condition: mariadb.enabled
   - name: valkey
-    version: "0.6.0"
+    version: "0.15.0"
     repository: oci://registry-1.docker.io/cloudpirates
     condition: valkey.enabled
