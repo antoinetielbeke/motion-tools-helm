@@ -109,7 +109,9 @@ helm install my-motion-tools tielbeke-motion-tools-helm/motion-tools \
   --set motionTools.smtp.port=587 \
   --set motionTools.smtp.from=noreply@example.com \
   --set motionTools.smtp.user=noreply@example.com \
-  --set motionTools.smtp.password=smtppassword
+  --set motionTools.smtp.password=smtppassword \
+  --set motionTools.smtp.tls=true \
+  --set motionTools.smtp.auth=true
 ```
 
 3. **Production installation with Ingress and TLS:**
@@ -163,6 +165,8 @@ The following table lists the configurable parameters and their default values.
 | `motionTools.smtp.from` | From email address | `motiontool@example.com` |
 | `motionTools.smtp.user` | SMTP user | `motiontool@example.com` |
 | `motionTools.smtp.password` | SMTP password | `""` |
+| `motionTools.smtp.tls` | Enable TLS encryption | `false` |
+| `motionTools.smtp.auth` | Enable SMTP authentication (required for most SMTP servers) | `false` |
 
 ### Database Configuration
 
@@ -262,6 +266,8 @@ motionTools:
     port: 587
     from: noreply@example.com
     user: noreply@example.com
+    tls: true
+    auth: true
     existingSecret: smtp-credentials
 
 persistence:
