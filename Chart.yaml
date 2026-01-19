@@ -2,7 +2,7 @@ apiVersion: v2
 name: motion-tools
 description: A Helm chart for Motion Tools (Antragsgruen) - an online tool for NGOs and political parties to manage motions, resolutions and amendments
 type: application
-version: 0.4.2
+version: 0.5.0
 appVersion: "v4.15.3"
 kubeVersion: ">=1.19.0-0"
 keywords:

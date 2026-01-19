@@ -135,6 +135,8 @@ motionTools:
     # user: "motiontool@example.com"
     # Enable TLS (recommended for port 587)
     # tls: true
+    # Enable SMTP authentication (required for most SMTP servers like AWS SES, Gmail, etc.)
+    # auth: true
     # Password should be provided via secrets
     # password: ""
     # Use existing secret for SMTP password
