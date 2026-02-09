@@ -9,9 +9,14 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: read
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Get version from tag
         id: version
@@ -57,3 +62,16 @@ jobs:
           owner: "tielbeke"
           repo: "tielbeke"
           file: "motion-tools-*.tgz"
+
+      - name: Generate changelog
+        id: changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          args: --latest --strip header
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref_type == 'tag'
+        with:
+          body: ${{ steps.changelog.outputs.content }}
+          files: motion-tools-*.tgz
