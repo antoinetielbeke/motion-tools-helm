@@ -65,12 +65,21 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Create the image name
+PHP-FPM image name
 */}}
-{{- define "motion-tools.image" -}}
-{{- $registryName := .Values.image.repository -}}
-{{- $tag := .Values.image.tag | default .Chart.AppVersion -}}
-{{- printf "%s:%s" $registryName $tag -}}
+{{- define "motion-tools.phpImage" -}}
+{{- $repository := .Values.images.php.repository -}}
+{{- $tag := .Values.images.php.tag | default .Chart.AppVersion -}}
+{{- printf "%s:%s" $repository $tag -}}
+{{- end }}
+
+{{/*
+NGINX image name
+*/}}
+{{- define "motion-tools.nginxImage" -}}
+{{- $repository := .Values.images.nginx.repository -}}
+{{- $tag := .Values.images.nginx.tag | default .Chart.AppVersion -}}
+{{- printf "%s:%s" $repository $tag -}}
 {{- end }}
 
 {{/*
@@ -78,7 +87,7 @@ Database host
 */}}
 {{- define "motion-tools.databaseHost" -}}
 {{- if .Values.mariadb.enabled -}}
-{{- if eq .Values.mariadb.architecture "replication" -}}
+{{- if eq (.Values.mariadb.architecture | default "standalone") "replication" -}}
 {{- printf "%s-%s-primary" (include "motion-tools.fullname" .) "mariadb" | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
 {{- printf "%s-%s" (include "motion-tools.fullname" .) "mariadb" | trunc 63 | trimSuffix "-" -}}
@@ -122,21 +131,6 @@ Database user
 {{- end -}}
 
 {{/*
-Valkey host
-*/}}
-{{- define "motion-tools.valkeyHost" -}}
-{{- if .Values.valkey.enabled -}}
-{{- if eq .Values.valkey.architecture "replication" -}}
-{{- printf "%s-%s" (include "motion-tools.fullname" .) "valkey" | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- printf "%s-%s" (include "motion-tools.fullname" .) "valkey" | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-{{- else -}}
-{{- .Values.motionTools.valkey.host -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
 Database password secret name
 */}}
 {{- define "motion-tools.databaseSecretName" -}}
@@ -165,13 +159,22 @@ mariadb-password
 {{- end -}}
 
 {{/*
-SMTP secret name
+RANDOM_SEED secret name
 */}}
-{{- define "motion-tools.smtpSecretName" -}}
-{{- if .Values.motionTools.smtp.existingSecret -}}
-{{- .Values.motionTools.smtp.existingSecret -}}
+{{- define "motion-tools.randomSeedSecretName" -}}
+{{- if .Values.app.existingSecretRandomSeed -}}
+{{- .Values.app.existingSecretRandomSeed -}}
 {{- else -}}
-{{- printf "%s-smtp" (include "motion-tools.fullname" .) -}}
+{{- printf "%s-app" (include "motion-tools.fullname" .) -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Valkey host
+*/}}
+{{- define "motion-tools.valkeyHost" -}}
+{{- if .Values.valkey.enabled -}}
+{{- printf "%s-%s" (include "motion-tools.fullname" .) "valkey" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 {{- end -}}
 
@@ -179,14 +182,20 @@ SMTP secret name
 Valkey secret name
 */}}
 {{- define "motion-tools.valkeySecretName" -}}
-{{- if .Values.motionTools.valkey.existingSecret -}}
-{{- .Values.motionTools.valkey.existingSecret -}}
+{{- if .Values.valkey.auth.existingSecret -}}
+{{- .Values.valkey.auth.existingSecret -}}
 {{- else -}}
 {{- printf "%s-valkey" (include "motion-tools.fullname" .) -}}
 {{- end -}}
 {{- end -}}
 
-
 {{/*
-StatefulSet uses a predictable volume name pattern based on pod name
+SMTP secret name
 */}}
+{{- define "motion-tools.smtpSecretName" -}}
+{{- if .Values.app.smtp.existingSecret -}}
+{{- .Values.app.smtp.existingSecret -}}
+{{- else -}}
+{{- printf "%s-app" (include "motion-tools.fullname" .) -}}
+{{- end -}}
+{{- end -}}

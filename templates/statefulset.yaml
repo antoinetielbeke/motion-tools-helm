@@ -1,3 +1,6 @@
+{{- if and (not .Values.app.randomSeed) (not .Values.app.existingSecretRandomSeed) }}
+{{- fail "app.randomSeed is required. Generate with: openssl rand -base64 32. Alternatively, set app.existingSecretRandomSeed to use an existing secret." }}
+{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -41,31 +44,20 @@ spec:
       priorityClassName: {{ . }}
       {{- end }}
       initContainers:
-        {{- with .Values.initContainers }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
-        {{- if .Values.persistence.enabled }}
-        # Init container to copy application files from the Docker image to the persistent volume
-        # This is needed because unlike docker-compose, Kubernetes PersistentVolumes start empty
-        # and don't automatically populate from the image. This only runs on first deployment.
-        - name: install-app
-          image: {{ include "motion-tools.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+        # Copy static web files from PHP image to shared emptyDir for NGINX
+        - name: copy-static-files
+          image: {{ include "motion-tools.phpImage" . }}
+          imagePullPolicy: {{ .Values.images.php.pullPolicy }}
           command:
             - sh
             - -c
             - |
-              # Only copy if the persistent volume is empty (first run)
-              if [ ! -f /data/index.php ]; then
-                echo "Initializing persistent volume with application files..."
-                cp -a /var/www/html/. /data/
-                echo "Application files copied to persistent volume!"
-              else
-                echo "Persistent volume already initialized, skipping."
-              fi
+              echo "Copying static web files to shared volume..."
+              cp -a /var/www/html/web/. /static-files/
+              echo "Static files copied successfully!"
           volumeMounts:
-            - name: data
-              mountPath: /data
+            - name: static-files
+              mountPath: /static-files
           resources:
             limits:
               cpu: 200m
@@ -73,87 +65,194 @@ spec:
             requests:
               cpu: 100m
               memory: 128Mi
-        {{- end }}
-        {{- if .Values.mariadb.enabled }}
-        - name: wait-for-database
-          image: busybox:1.36
-          imagePullPolicy: IfNotPresent
-          {{- with .Values.securityContext }}
-          securityContext:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          command:
-            - sh
-            - -c
-            - |
-              until nc -z {{ include "motion-tools.databaseHost" . }} {{ include "motion-tools.databasePort" . }}; do
-                echo "Waiting for database to be ready..."
-                sleep 5
-              done
-              echo "Database is ready!"
-              exit 0
-          resources:
-            limits:
-              cpu: 100m
-              memory: 128Mi
-            requests:
-              cpu: 50m
-              memory: 64Mi
+        {{- with .Values.initContainers }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
       containers:
-        - name: {{ .Chart.Name }}
+        # PHP-FPM container
+        - name: php-fpm
           {{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ include "motion-tools.image" . }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: {{ include "motion-tools.phpImage" . }}
+          imagePullPolicy: {{ .Values.images.php.pullPolicy }}
           ports:
-            - name: http
-              containerPort: {{ .Values.service.targetPort }}
+            - name: php-fpm
+              containerPort: 9000
               protocol: TCP
           env:
-            # Timezone configuration
-            - name: TIMEZONE
-              value: {{ .Values.motionTools.timezone | quote }}
+            # Required: Security seed
+            - name: RANDOM_SEED
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.randomSeedSecretName" . }}
+                  key: {{ .Values.app.randomSeedSecretKey | default "random-seed" }}
 
-            # Apache configuration
-            - name: APACHE_FQDN
-              value: {{ .Values.motionTools.apacheFqdn | quote }}
+            # Database configuration
+            - name: DB_HOST
+              value: {{ include "motion-tools.databaseHost" . | quote }}
+            - name: DB_PORT
+              value: {{ include "motion-tools.databasePort" . | quote }}
+            - name: DB_NAME
+              value: {{ include "motion-tools.databaseName" . | quote }}
+            - name: DB_USER
+              value: {{ include "motion-tools.databaseUser" . | quote }}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.databaseSecretName" . }}
+                  key: {{ include "motion-tools.databaseSecretPasswordKey" . }}
 
-            {{- if .Values.motionTools.smtp.enabled }}
-            # SMTP configuration
-            - name: SMTP_HOST
-              value: {{ .Values.motionTools.smtp.host | quote }}
-            - name: SMTP_PORT
-              value: {{ .Values.motionTools.smtp.port | quote }}
-            - name: SMTP_FROM
-              value: {{ .Values.motionTools.smtp.from | quote }}
-            - name: SMTP_USER
-              value: {{ .Values.motionTools.smtp.user | quote }}
-            - name: SMTP_PASS
+            # Application configuration
+            - name: APP_DOMAIN
+              value: {{ .Values.app.domain | quote }}
+            - name: APP_PROTOCOL
+              value: {{ .Values.app.protocol | default "https" | quote }}
+            - name: BASE_LANGUAGE
+              value: {{ .Values.app.baseLanguage | default "en" | quote }}
+            - name: MULTISITE_MODE
+              value: {{ .Values.app.multisiteMode | quote }}
+            - name: RUN_MIGRATIONS
+              value: {{ .Values.app.runMigrations | quote }}
+
+            {{- if not .Values.app.multisiteMode }}
+            # Single-site configuration
+            - name: SITE_SUBDOMAIN
+              value: {{ .Values.app.singleSite.subdomain | default "std" | quote }}
+            - name: SITE_TITLE
+              value: {{ .Values.app.singleSite.title | default "Demo Site" | quote }}
+            - name: CONSULTATION_PATH
+              value: {{ .Values.app.singleSite.consultationPath | default "main" | quote }}
+            - name: CONSULTATION_TITLE
+              value: {{ .Values.app.singleSite.consultationTitle | default "Main Consultation" | quote }}
+            - name: CONSULTATION_TITLE_SHORT
+              value: {{ .Values.app.singleSite.consultationTitleShort | default "Main" | quote }}
+            {{- end }}
+
+            {{- if .Values.valkey.enabled }}
+            # Redis/Valkey configuration
+            - name: REDIS_HOST
+              value: {{ include "motion-tools.valkeyHost" . | quote }}
+            - name: REDIS_PORT
+              value: {{ .Values.valkey.service.port | default 6379 | quote }}
+            {{- if .Values.valkey.auth.enabled }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.valkeySecretName" . }}
+                  key: {{ .Values.valkey.auth.existingSecretPasswordKey | default "password" }}
+            {{- end }}
+            {{- end }}
+
+            # Mail configuration
+            {{- if .Values.app.mailerDsn }}
+            - name: MAILER_DSN
+              value: {{ .Values.app.mailerDsn | quote }}
+            {{- else if .Values.app.smtp.enabled }}
+            - name: MAILER_DSN
               valueFrom:
                 secretKeyRef:
                   name: {{ include "motion-tools.smtpSecretName" . }}
-                  key: {{ .Values.motionTools.smtp.secretKey }}
-            {{- if .Values.motionTools.smtp.tls }}
-            - name: SMTP_TLS
-              value: "true"
-            {{- end }}
-            {{- if .Values.motionTools.smtp.auth }}
-            - name: SMTP_AUTH
-              value: "true"
-            {{- end }}
+                  key: mailer-dsn
             {{- end }}
 
-            {{- with .Values.motionTools.extraEnvVars }}
+            {{- if .Values.app.mail.fromEmail }}
+            - name: MAIL_FROM_EMAIL
+              value: {{ .Values.app.mail.fromEmail | quote }}
+            {{- end }}
+            {{- if .Values.app.mail.fromName }}
+            - name: MAIL_FROM_NAME
+              value: {{ .Values.app.mail.fromName | quote }}
+            {{- end }}
+
+            {{- with .Values.app.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
 
-          {{- with .Values.motionTools.extraEnvFrom }}
+          {{- with .Values.app.extraEnvFrom }}
           envFrom:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+
+          livenessProbe:
+            tcpSocket:
+              port: php-fpm
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          readinessProbe:
+            tcpSocket:
+              port: php-fpm
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          startupProbe:
+            tcpSocket:
+              port: php-fpm
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+
+          {{- with .Values.php.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          volumeMounts:
+            {{- if .Values.persistence.runtime.enabled }}
+            - name: runtime
+              mountPath: /var/www/html/runtime
+            {{- end }}
+            {{- if .Values.persistence.assets.enabled }}
+            - name: assets
+              mountPath: /var/www/html/web/assets
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
+        # NGINX container (sidecar)
+        - name: nginx
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "motion-tools.nginxImage" . }}
+          imagePullPolicy: {{ .Values.images.nginx.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          env:
+            - name: PHP_FPM_HOST
+              value: "localhost"
+            - name: PHP_FPM_PORT
+              value: "9000"
+            - name: NGINX_SERVER_NAME
+              value: {{ .Values.nginx.serverName | default "_" | quote }}
+            - name: NGINX_CLIENT_MAX_BODY_SIZE
+              value: {{ .Values.nginx.clientMaxBodySize | default "32M" | quote }}
+            - name: NGINX_FASTCGI_CONNECT_TIMEOUT
+              value: {{ .Values.nginx.fastcgi.connectTimeout | default "60s" | quote }}
+            - name: NGINX_FASTCGI_SEND_TIMEOUT
+              value: {{ .Values.nginx.fastcgi.sendTimeout | default "300s" | quote }}
+            - name: NGINX_FASTCGI_READ_TIMEOUT
+              value: {{ .Values.nginx.fastcgi.readTimeout | default "300s" | quote }}
+            - name: WAIT_FOR_PHP_FPM
+              value: "true"
+            {{- if not .Values.app.multisiteMode }}
+            - name: ROOT_REDIRECT
+              value: {{ printf "/%s" (.Values.app.singleSite.consultationPath | default "main") | quote }}
+            {{- else if .Values.nginx.rootRedirect }}
+            - name: ROOT_REDIRECT
+              value: {{ .Values.nginx.rootRedirect | quote }}
+            {{- end }}
 
           {{- if .Values.livenessProbe }}
           livenessProbe:
@@ -170,23 +269,19 @@ spec:
             {{- toYaml .Values.startupProbe | nindent 12 }}
           {{- end }}
 
-          {{- with .Values.resources }}
+          {{- with .Values.nginx.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
 
           volumeMounts:
-            - name: data
-              mountPath: {{ .Values.persistence.mountPath | default "/var/www/html" }}
-              {{- if .Values.persistence.subPath }}
-              subPath: {{ .Values.persistence.subPath }}
-              {{- end }}
-            - name: php-config
-              mountPath: /usr/local/etc/php/conf.d/php.ini
-              subPath: php.ini
-
-            {{- with .Values.extraVolumeMounts }}
-            {{- toYaml . | nindent 12 }}
+            - name: static-files
+              mountPath: /var/www/html/web
+              readOnly: true
+            {{- if .Values.persistence.assets.enabled }}
+            - name: assets
+              mountPath: /var/www/html/web/assets
+              readOnly: true
             {{- end }}
 
         {{- with .Values.sidecarContainers }}
@@ -194,9 +289,8 @@ spec:
         {{- end }}
 
       volumes:
-        - name: php-config
-          configMap:
-            name: {{ include "motion-tools.fullname" . }}-php-config
+        - name: static-files
+          emptyDir: {}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -220,29 +314,47 @@ spec:
       topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-  {{- if .Values.persistence.enabled }}
+
   volumeClaimTemplates:
+    {{- if .Values.persistence.runtime.enabled }}
     - metadata:
-        name: data
-        {{- with .Values.persistence.annotations }}
+        name: runtime
+        {{- with .Values.persistence.runtime.annotations }}
         annotations:
           {{- toYaml . | nindent 10 }}
         {{- end }}
       spec:
         accessModes:
-          - {{ .Values.persistence.accessMode }}
-        {{- if .Values.persistence.storageClass }}
-        {{- if (eq "-" .Values.persistence.storageClass) }}
+          - {{ .Values.persistence.runtime.accessMode }}
+        {{- if .Values.persistence.runtime.storageClass }}
+        {{- if (eq "-" .Values.persistence.runtime.storageClass) }}
         storageClassName: ""
         {{- else }}
-        storageClassName: {{ .Values.persistence.storageClass | quote }}
+        storageClassName: {{ .Values.persistence.runtime.storageClass | quote }}
         {{- end }}
         {{- end }}
         resources:
           requests:
-            storage: {{ .Values.persistence.size | quote }}
-        {{- if .Values.persistence.selector }}
-        selector:
-          {{- toYaml .Values.persistence.selector | nindent 10 }}
+            storage: {{ .Values.persistence.runtime.size | quote }}
+    {{- end }}
+    {{- if .Values.persistence.assets.enabled }}
+    - metadata:
+        name: assets
+        {{- with .Values.persistence.assets.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
         {{- end }}
-  {{- end }}
+      spec:
+        accessModes:
+          - {{ .Values.persistence.assets.accessMode }}
+        {{- if .Values.persistence.assets.storageClass }}
+        {{- if (eq "-" .Values.persistence.assets.storageClass) }}
+        storageClassName: ""
+        {{- else }}
+        storageClassName: {{ .Values.persistence.assets.storageClass | quote }}
+        {{- end }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.assets.size | quote }}
+    {{- end }}

@@ -2,8 +2,8 @@ apiVersion: v2
 name: motion-tools
 description: A Helm chart for Motion Tools (Antragsgruen) - an online tool for NGOs and political parties to manage motions, resolutions and amendments
 type: application
-version: 0.5.1
-appVersion: "v4.15.3"
+version: 1.0.0
+appVersion: "v4.17.0-volt.2"
 kubeVersion: ">=1.19.0-0"
 keywords:
   - motion
@@ -29,8 +29,13 @@ annotations:
     - name: Support
       url: https://github.com/CatoTH/antragsgruen/issues
   artifacthub.io/images: |
-    - name: motion-tools
-      image: devopsansiblede/antragsgruen:v4.15.3
+    - name: motion-tools-php
+      image: ghcr.io/antoinetielbeke/motion-tools-php:v4.17.0-volt.2
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    - name: motion-tools-nginx
+      image: ghcr.io/antoinetielbeke/motion-tools-nginx:v4.17.0-volt.2
       platforms:
         - linux/amd64
         - linux/arm64
@@ -38,12 +43,20 @@ annotations:
     - name: Antoine Tielbeke
       email: antoine@tielbeke.io
   artifacthub.io/changes: |
-    - Initial Helm chart release for Motion Tools (Antragsgruen)
-    - Supports MariaDB and Valkey dependencies
-    - Configurable SMTP, persistence, and ingress
-    - StatefulSet deployment for single-instance requirement
-    - Comprehensive configuration options
-    - Hosted on Cloudsmith for easy distribution
+    - kind: changed
+      description: "BREAKING: Migrated from monolithic Apache+PHP image to two-container sidecar (PHP-FPM + NGINX)"
+    - kind: changed
+      description: "BREAKING: Replaced motionTools config section with app section using environment variables"
+    - kind: changed
+      description: "BREAKING: Split persistence into runtime and assets volumes"
+    - kind: added
+      description: "Added RANDOM_SEED requirement and secret management"
+    - kind: added
+      description: "Added native environment variable support for all app settings"
+    - kind: removed
+      description: "Removed PHP ConfigMap (configuration now baked into image)"
+    - kind: changed
+      description: "Updated to Antragsgruen v4.17-volt with 12-factor environment variable support"
 home: https://motion.tools
 sources:
   - https://github.com/CatoTH/antragsgruen
