@@ -18,15 +18,14 @@ spec:
     {{- if .Values.networkPolicy.ingress }}
     {{- toYaml .Values.networkPolicy.ingress | nindent 4 }}
     {{- else }}
-    # Default: Allow ingress on the service port
+    # Default: Allow ingress on HTTP port (NGINX container)
     - ports:
       - protocol: TCP
-        port: {{ .Values.service.targetPort }}
+        port: 80
       {{- if .Values.networkPolicy.ingressFrom }}
       from:
         {{- toYaml .Values.networkPolicy.ingressFrom | nindent 8 }}
       {{- else }}
-      # Allow from anywhere if no specific sources defined
       from: []
       {{- end }}
     {{- end }}
@@ -36,7 +35,6 @@ spec:
     {{- if .Values.networkPolicy.egress }}
     {{- toYaml .Values.networkPolicy.egress | nindent 4 }}
     {{- else }}
-    # Default egress rules
     # Allow DNS
     - ports:
       - protocol: TCP
@@ -54,26 +52,29 @@ spec:
             app.kubernetes.io/name: mariadb
             app.kubernetes.io/instance: {{ .Release.Name }}
             {{- else }}
-            # External database - allow all IPs (you should restrict this)
             {}
             {{- end }}
-    {{- if and .Values.motionTools.smtp.enabled }}
-    # Allow SMTP connection
+    {{- if .Values.valkey.enabled }}
+    # Allow Valkey/Redis connection
     - ports:
       - protocol: TCP
-        port: {{ .Values.motionTools.smtp.port }}
+        port: {{ .Values.valkey.service.port | default 6379 }}
+      to:
+      - podSelector:
+          matchLabels:
+            app.kubernetes.io/name: valkey
+            app.kubernetes.io/instance: {{ .Release.Name }}
     {{- end }}
-    {{- if and .Values.motionTools.valkey.enabled }}
-    # Allow Valkey connection (Redis-compatible)
-    - ports:
-      - protocol: TCP
-        port: {{ .Values.motionTools.valkey.port }}
-    {{- end }}
-
-    # Allow HTTPS for external API calls
+    # Allow HTTPS and SMTP
     - ports:
       - protocol: TCP
         port: 443
+      - protocol: TCP
+        port: 587
+      - protocol: TCP
+        port: 465
+      - protocol: TCP
+        port: 25
     {{- end }}
   {{- end }}
 {{- end }}

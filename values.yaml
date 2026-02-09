@@ -2,11 +2,18 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-image:
-  repository: devopsansiblede/antragsgruen
-  pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+# Container images
+images:
+  php:
+    repository: ghcr.io/antoinetielbeke/motion-tools-php
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
+  nginx:
+    repository: ghcr.io/antoinetielbeke/motion-tools-nginx
+    pullPolicy: IfNotPresent
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
@@ -63,28 +70,10 @@ ingress:
   #    hosts:
   #      - motion.local
 
-resources:
-  limits:
-    cpu: 1000m
-    memory: 1024Mi
-  requests:
-    cpu: 250m
-    memory: 512Mi
-
+# NGINX container health probes (HTTP on port 80)
 livenessProbe:
   httpGet:
-    path: /
-    port: http
-    scheme: HTTP
-  initialDelaySeconds: 60
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
-  successThreshold: 1
-
-readinessProbe:
-  httpGet:
-    path: /
+    path: /health
     port: http
     scheme: HTTP
   initialDelaySeconds: 30
@@ -93,9 +82,20 @@ readinessProbe:
   failureThreshold: 3
   successThreshold: 1
 
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+    scheme: HTTP
+  initialDelaySeconds: 20
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
 startupProbe:
   httpGet:
-    path: /
+    path: /health
     port: http
     scheme: HTTP
   initialDelaySeconds: 0
@@ -104,47 +104,69 @@ startupProbe:
   failureThreshold: 30
   successThreshold: 1
 
-# Volume configuration for persistent data
+# Persistence configuration
 # StatefulSet handles persistence through volumeClaimTemplates
 persistence:
-  enabled: true
-  accessMode: ReadWriteOnce
-  size: 10Gi
-  storageClass: ""
-  annotations: {}
-  # Note: existingClaim is not used with StatefulSet
-  mountPath: "/var/www/html"
-  # subPath: ""
+  runtime:
+    enabled: true
+    accessMode: ReadWriteOnce
+    size: 5Gi
+    storageClass: ""
+    annotations: {}
+  assets:
+    enabled: true
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    storageClass: ""
+    annotations: {}
 
-# Motion Tools specific configuration
-motionTools:
-  # Environment variables for the container
-  timezone: "Europe/Amsterdam"
+# Application configuration
+app:
+  # Required: Security seed for the application
+  # Generate with: openssl rand -base64 32
+  randomSeed: ""
+  # Use existing secret for randomSeed
+  existingSecretRandomSeed: ""
+  randomSeedSecretKey: "random-seed"
 
-  # Apache FQDN configuration
-  apacheFqdn: "motion.local"
+  # Application settings
+  domain: "motion.local"
+  protocol: "https"
+  baseLanguage: "en"
+  multisiteMode: false
+  runMigrations: true
 
-  # SMTP Configuration
-  # If disabled, local sendmail is used
-  # To enable SMTP, uncomment and configure the parameters below
+  # Single-site mode settings (only used when multisiteMode is false)
+  singleSite:
+    subdomain: "std"
+    title: "Demo Site"
+    consultationPath: "main"
+    consultationTitle: "Main Consultation"
+    consultationTitleShort: "Main"
+
+  # Mail configuration
+  # Option 1: Symfony Mailer DSN (recommended)
+  # e.g. "smtp://user:pass@host:587"
+  mailerDsn: ""
+
+  # Option 2: Individual SMTP settings (used to construct MAILER_DSN if mailerDsn is empty)
   smtp:
     enabled: false
     # host: "mail.example.com"
     # port: 587
-    # from: "motiontool@example.com"
-    # user: "motiontool@example.com"
-    # Enable TLS (recommended for port 587)
-    # tls: true
-    # Enable SMTP authentication (required for most SMTP servers like AWS SES, Gmail, etc.)
-    # auth: true
-    # Password should be provided via secrets
+    # username: "motiontool@example.com"
     # password: ""
+    # encryption: "tls"
     # Use existing secret for SMTP password
     # existingSecret: ""
-    # Key in the secret containing the password
     # secretKey: "smtp-password"
 
-  # Additional environment variables
+  # Mail sender information
+  mail:
+    fromEmail: ""
+    fromName: ""
+
+  # Additional environment variables for the PHP-FPM container
   extraEnvVars: []
   # - name: CUSTOM_VAR
   #   value: "custom-value"
@@ -156,14 +178,33 @@ motionTools:
   # - secretRef:
   #     name: my-secret
 
-# PHP Configuration
+# NGINX container configuration
+nginx:
+  # Root path redirect (auto-set in single-site mode, configurable in multisite)
+  rootRedirect: ""
+  serverName: "_"
+  clientMaxBodySize: "32M"
+  fastcgi:
+    connectTimeout: "60s"
+    sendTimeout: "300s"
+    readTimeout: "300s"
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# PHP-FPM container resources
 php:
-  # PHP configuration parameters
-  uploadMaxFilesize: "500M"
-  postMaxSize: "500M"
-  maxExecutionTime: 60
-  memoryLimit: "768M"
-  maxInputTime: 60
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1024Mi
+    requests:
+      cpu: 250m
+      memory: 512Mi
 
 # Valkey configuration (Redis-compatible in-memory data store) - CloudPirates chart
 valkey:
@@ -276,23 +317,17 @@ extraVolumes: []
 #   configMap:
 #     name: extra-configmap
 
-# Additional volume mounts
+# Additional volume mounts for the PHP-FPM container
 extraVolumeMounts: []
 # - name: extra-volume
 #   mountPath: /extra
 #   readOnly: true
 
-# Init containers
+# Additional init containers
 initContainers: []
-# - name: init-db
-#   image: busybox:1.35
-#   command: ['sh', '-c', 'until nc -z database 3306; do echo waiting for db; sleep 2; done;']
 
-# Sidecar containers
+# Additional sidecar containers
 sidecarContainers: []
-# - name: sidecar
-#   image: busybox:1.35
-#   command: ['sh', '-c', 'while true; do echo sidecar; sleep 30; done']
 
 # Network policy
 # recommended for production
@@ -311,13 +346,8 @@ priorityClassName: ""
 topologySpreadConstraints: []
 
 # Update strategy for StatefulSet
-# This controls how pods are updated during a rolling update
-# For a single-replica StatefulSet, this has minimal impact but is still required
-# - type: RollingUpdate - updates pods one at a time
-# - partition: 0 - all pods will be updated (in this case, just the one pod)
 updateStrategy:
   type: RollingUpdate
-  # Note: maxSurge is not available for StatefulSets
   rollingUpdate:
     partition: 0
 

@@ -6,11 +6,13 @@ A Helm chart for deploying [Motion Tools (Antragsgrün)](https://github.com/Cato
 
 ## Features
 
-- **Easy Deployment**: Simple installation with sensible defaults
+- **Sidecar Architecture**: Two-container pod with PHP-FPM and NGINX for separation of concerns
+- **12-Factor Configuration**: All application settings via environment variables
 - **Database Management**: Integrated MariaDB or external database support
+- **Caching**: Optional Valkey (Redis-compatible) integration
 - **Security**: Built-in security configurations and network policies
-- **Monitoring**: Health checks and probes configured
-- **Customizable**: Extensive configuration options via environment variables
+- **Monitoring**: Health checks and probes configured for both containers
+- **Customizable**: Extensive configuration options via Helm values
 
 ## Prerequisites
 
@@ -29,25 +31,19 @@ helm repo add tielbeke-motion-tools-helm 'https://dl.cloudsmith.io/public/tielbe
 helm repo update
 ```
 
-### Install with default configuration
+### Install with custom values
+
+A `app.randomSeed` is required for all installations. Generate one first:
 
 ```bash
-# From repository
-helm install motion-tools tielbeke-motion-tools-helm/motion-tools
-
-# Direct install without adding repository
-helm install motion-tools \
-  --repo 'https://dl.cloudsmith.io/public/tielbeke/tielbeke/helm/charts/' \
-  motion-tools
+openssl rand -base64 32
 ```
-
-### Install with custom values
 
 ```bash
 # From repository
 helm install motion-tools tielbeke-motion-tools-helm/motion-tools -f custom-values.yaml
 
-# Direct install with custom values
+# Direct install without adding repository
 helm install motion-tools \
   --repo 'https://dl.cloudsmith.io/public/tielbeke/tielbeke/helm/charts/' \
   motion-tools -f custom-values.yaml
@@ -57,7 +53,8 @@ helm install motion-tools \
 
 ```bash
 kubectl create namespace motion-tools
-helm install motion-tools tielbeke-motion-tools-helm/motion-tools --namespace motion-tools
+helm install motion-tools tielbeke-motion-tools-helm/motion-tools \
+  --namespace motion-tools -f custom-values.yaml
 ```
 
 ## Testing with Kind
@@ -78,12 +75,13 @@ kubectl get pods -l app.kubernetes.io/instance=motion-tools
 kubectl port-forward svc/motion-tools 8080:80
 # Visit http://localhost:8080 in your browser
 
-# Check logs
-kubectl logs -l app.kubernetes.io/name=motion-tools
+# Check logs (both containers)
+kubectl logs -l app.kubernetes.io/name=motion-tools -c motion-tools-php
+kubectl logs -l app.kubernetes.io/name=motion-tools -c motion-tools-nginx
 ```
 
 The test deployment includes:
-- Motion Tools application with minimal resources
+- Motion Tools application (PHP-FPM + NGINX sidecar)
 - MariaDB database (without persistence for faster testing)
 - All services configured for local development
 
@@ -91,105 +89,187 @@ The test deployment includes:
 
 1. **Basic installation with integrated database:**
 
+```yaml
+# basic-values.yaml
+app:
+  randomSeed: "<generate with: openssl rand -base64 32>"
+  domain: "motion.example.com"
+```
+
 ```bash
-helm install my-motion-tools tielbeke-motion-tools-helm/motion-tools \
-  --set motionTools.apacheFqdn=motion.example.com \
-  --set mariadb.auth.password=dbpassword
+helm install motion-tools tielbeke-motion-tools-helm/motion-tools -f basic-values.yaml
 ```
 
 2. **Installation with SMTP:**
 
+```yaml
+# smtp-values.yaml
+app:
+  randomSeed: "<generate with: openssl rand -base64 32>"
+  domain: "motion.example.com"
+  smtp:
+    enabled: true
+    host: "smtp.example.com"
+    port: 587
+    username: "noreply@example.com"
+    password: "smtppassword"
+    encryption: "tls"
+  mail:
+    fromEmail: "noreply@example.com"
+    fromName: "Motion Tools"
+```
+
 ```bash
-helm install my-motion-tools tielbeke-motion-tools-helm/motion-tools \
-  --set motionTools.apacheFqdn=motion.example.com \
-  --set mariadb.auth.password=dbpassword \
-  --set mariadb.auth.rootPassword=rootpassword \
-  --set motionTools.smtp.enabled=true \
-  --set motionTools.smtp.host=smtp.example.com \
-  --set motionTools.smtp.port=587 \
-  --set motionTools.smtp.from=noreply@example.com \
-  --set motionTools.smtp.user=noreply@example.com \
-  --set motionTools.smtp.password=smtppassword \
-  --set motionTools.smtp.tls=true \
-  --set motionTools.smtp.auth=true
+helm install motion-tools tielbeke-motion-tools-helm/motion-tools -f smtp-values.yaml
 ```
 
 3. **Production installation with Ingress and TLS:**
 
+```yaml
+# production-values.yaml
+app:
+  randomSeed: "<generate with: openssl rand -base64 32>"
+  domain: "motion.example.com"
+  protocol: "https"
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: motion.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: motion-tls
+      hosts:
+        - motion.example.com
+```
+
 ```bash
-helm install my-motion-tools tielbeke-motion-tools-helm/motion-tools \
-  --set ingress.enabled=true \
-  --set ingress.className=nginx \
-  --set ingress.hosts[0].host=motion.example.com \
-  --set ingress.hosts[0].paths[0].path=/ \
-  --set ingress.hosts[0].paths[0].pathType=Prefix \
-  --set ingress.tls[0].secretName=motion-tls \
-  --set ingress.tls[0].hosts[0]=motion.example.com \
-  --set motionTools.apacheFqdn=motion.example.com
+helm install motion-tools tielbeke-motion-tools-helm/motion-tools -f production-values.yaml
 ```
 
 ## Configuration
 
-The following table lists the configurable parameters and their default values.
+The following tables list the configurable parameters and their default values.
 
-### PHP Configuration
+### Images
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `php.uploadMaxFilesize` | Maximum upload file size | `500M` |
-| `php.postMaxSize` | Maximum POST data size | `500M` |
-| `php.maxExecutionTime` | Maximum execution time in seconds | `60` |
-| `php.memoryLimit` | Memory limit for PHP scripts | `768M` |
-| `php.maxInputTime` | Maximum input parsing time in seconds | `60` |
+| `images.php.repository` | PHP-FPM image repository | `ghcr.io/antoinetielbeke/motion-tools-php` |
+| `images.php.tag` | PHP-FPM image tag | `""` (uses chart appVersion) |
+| `images.php.pullPolicy` | PHP-FPM image pull policy | `IfNotPresent` |
+| `images.nginx.repository` | NGINX image repository | `ghcr.io/antoinetielbeke/motion-tools-nginx` |
+| `images.nginx.tag` | NGINX image tag | `""` (uses chart appVersion) |
+| `images.nginx.pullPolicy` | NGINX image pull policy | `IfNotPresent` |
+| `imagePullSecrets` | Image pull secrets | `[]` |
 
 ### Global Parameters
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `replicaCount` | Number of replicas (must be 1) | `1` |
-| `image.repository` | Image repository | `devopsansiblede/antragsgruen` |
-| `image.tag` | Image tag | `""` (uses chart appVersion) |
-| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `nameOverride` | Override the chart name | `""` |
 | `fullnameOverride` | Override the full name | `""` |
+| `serviceAccount.create` | Create a service account | `true` |
+| `serviceAccount.name` | Service account name | `""` |
 
-### Motion Tools Configuration
+### Application Configuration
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `motionTools.timezone` | Application timezone | `Europe/Amsterdam` |
-| `motionTools.apacheFqdn` | Apache FQDN | `motion.local` |
-| `motionTools.smtp.enabled` | Enable SMTP (if disabled, local sendmail is used) | `false` |
-| `motionTools.smtp.host` | SMTP host | `mail.example.com` |
-| `motionTools.smtp.port` | SMTP port | `587` |
-| `motionTools.smtp.from` | From email address | `motiontool@example.com` |
-| `motionTools.smtp.user` | SMTP user | `motiontool@example.com` |
-| `motionTools.smtp.password` | SMTP password | `""` |
-| `motionTools.smtp.tls` | Enable TLS encryption | `false` |
-| `motionTools.smtp.auth` | Enable SMTP authentication (required for most SMTP servers) | `false` |
+| `app.randomSeed` | **Required.** Security seed (generate with `openssl rand -base64 32`) | `""` |
+| `app.existingSecretRandomSeed` | Use an existing secret for the random seed instead | `""` |
+| `app.randomSeedSecretKey` | Key in the existing secret containing the random seed | `"random-seed"` |
+| `app.domain` | Application domain | `"motion.local"` |
+| `app.protocol` | Application protocol | `"https"` |
+| `app.baseLanguage` | Base language | `"en"` |
+| `app.multisiteMode` | Enable multisite mode | `false` |
+| `app.runMigrations` | Run database migrations on startup | `true` |
+
+### Single-Site Mode
+
+Used when `app.multisiteMode` is `false`.
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `app.singleSite.subdomain` | Site subdomain | `"std"` |
+| `app.singleSite.title` | Site title | `"Demo Site"` |
+| `app.singleSite.consultationPath` | Consultation URL path | `"main"` |
+| `app.singleSite.consultationTitle` | Consultation title | `"Main Consultation"` |
+| `app.singleSite.consultationTitleShort` | Consultation short title | `"Main"` |
+
+### Mail Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `app.mailerDsn` | Symfony Mailer DSN (recommended, e.g. `smtp://user:pass@host:587`) | `""` |
+| `app.smtp.enabled` | Enable SMTP (constructs DSN if `mailerDsn` is empty) | `false` |
+| `app.smtp.host` | SMTP host | `""` |
+| `app.smtp.port` | SMTP port | `""` |
+| `app.smtp.username` | SMTP username | `""` |
+| `app.smtp.password` | SMTP password | `""` |
+| `app.smtp.encryption` | SMTP encryption (`tls`) | `""` |
+| `app.mail.fromEmail` | Sender email address | `""` |
+| `app.mail.fromName` | Sender display name | `""` |
+| `app.extraEnvVars` | Additional environment variables for the PHP-FPM container | `[]` |
+| `app.extraEnvFrom` | Additional envFrom sources (ConfigMaps/Secrets) | `[]` |
+
+### NGINX Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `nginx.rootRedirect` | Root path redirect (auto-set in single-site mode) | `""` |
+| `nginx.serverName` | NGINX server name | `"_"` |
+| `nginx.clientMaxBodySize` | Maximum request body size | `"32M"` |
+| `nginx.fastcgi.connectTimeout` | FastCGI connect timeout | `"60s"` |
+| `nginx.fastcgi.sendTimeout` | FastCGI send timeout | `"300s"` |
+| `nginx.fastcgi.readTimeout` | FastCGI read timeout | `"300s"` |
 
 ### Database Configuration
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `mariadb.enabled` | Deploy MariaDB | `true` |
-| `mariadb.image.tag` | MariaDB image tag (version) | `""` (uses CloudPirates chart default) |
-| `mariadb.auth.database` | Database name | `antragsgruen` |
-| `mariadb.auth.username` | Database user | `antragsgruen` |
-| `mariadb.auth.password` | Database password | `changeme` |
+| `mariadb.enabled` | Deploy integrated MariaDB | `true` |
+| `mariadb.auth.rootPassword` | MariaDB root password | `"changeme"` |
+| `mariadb.auth.database` | Database name | `"antragsgruen"` |
+| `mariadb.auth.username` | Database user | `"antragsgruen"` |
+| `mariadb.auth.password` | Database password | `"changeme"` |
+| `mariadb.auth.existingSecret` | Use existing secret for passwords | `""` |
 | `externalDatabase.host` | External database host | `""` |
 | `externalDatabase.port` | External database port | `3306` |
-| `externalDatabase.database` | External database name | `antragsgruen` |
+| `externalDatabase.database` | External database name | `"antragsgruen"` |
+| `externalDatabase.username` | External database user | `"antragsgruen"` |
+| `externalDatabase.password` | External database password | `""` |
+| `externalDatabase.existingSecret` | Existing secret for external DB password | `""` |
+
+### Valkey (Redis-compatible) Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `valkey.enabled` | Deploy Valkey | `false` |
+| `valkey.replicaCount` | Number of Valkey replicas | `1` |
+| `valkey.auth.enabled` | Enable authentication | `true` |
+| `valkey.auth.password` | Valkey password | `"changeme"` |
+| `valkey.config.maxMemory` | Maximum memory | `"256mb"` |
+| `valkey.persistence.enabled` | Enable Valkey persistence | `true` |
+| `valkey.persistence.size` | Valkey volume size | `8Gi` |
 
 ### Persistence
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `persistence.enabled` | Enable persistence using PVC | `true` |
-| `persistence.accessMode` | PVC Access Mode (⚠️ MUST be ReadWriteOnce) | `ReadWriteOnce` |
-| `persistence.size` | Volume size | `10Gi` |
-| `persistence.storageClass` | Storage class | `""` (uses default) |
-| `persistence.existingClaim` | Use existing PVC | `""` |
+| `persistence.runtime.enabled` | Enable runtime volume (cache, sessions) | `true` |
+| `persistence.runtime.accessMode` | Runtime volume access mode | `ReadWriteOnce` |
+| `persistence.runtime.size` | Runtime volume size | `5Gi` |
+| `persistence.runtime.storageClass` | Runtime volume storage class | `""` |
+| `persistence.assets.enabled` | Enable assets volume (uploaded files) | `true` |
+| `persistence.assets.accessMode` | Assets volume access mode | `ReadWriteOnce` |
+| `persistence.assets.size` | Assets volume size | `10Gi` |
+| `persistence.assets.storageClass` | Assets volume storage class | `""` |
 
 ### Ingress
 
@@ -197,6 +277,7 @@ The following table lists the configurable parameters and their default values.
 |-----------|-------------|---------|
 | `ingress.enabled` | Enable ingress | `false` |
 | `ingress.className` | Ingress class name | `""` |
+| `ingress.annotations` | Ingress annotations | `{}` |
 | `ingress.hosts` | Ingress hosts | See values.yaml |
 | `ingress.tls` | TLS configuration | `[]` |
 
@@ -204,26 +285,44 @@ The following table lists the configurable parameters and their default values.
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `podSecurityContext.fsGroup` | File system group | `33` |
-| `podSecurityContext.runAsUser` | User ID | `33` |
-| `podSecurityContext.runAsNonRoot` | Run as non-root | `true` |
+| `podSecurityContext` | Pod security context | `{}` |
+| `securityContext` | Container security context | `{}` |
 | `networkPolicy.enabled` | Enable network policy | `false` |
 
 ### Resources
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `resources.limits.cpu` | CPU limit | `1000m` |
-| `resources.limits.memory` | Memory limit | `1024Mi` |
-| `resources.requests.cpu` | CPU request | `250m` |
-| `resources.requests.memory` | Memory request | `512Mi` |
+| `php.resources.limits.cpu` | PHP-FPM CPU limit | `1000m` |
+| `php.resources.limits.memory` | PHP-FPM memory limit | `1024Mi` |
+| `php.resources.requests.cpu` | PHP-FPM CPU request | `250m` |
+| `php.resources.requests.memory` | PHP-FPM memory request | `512Mi` |
+| `nginx.resources.limits.cpu` | NGINX CPU limit | `500m` |
+| `nginx.resources.limits.memory` | NGINX memory limit | `256Mi` |
+| `nginx.resources.requests.cpu` | NGINX CPU request | `100m` |
+| `nginx.resources.requests.memory` | NGINX memory request | `128Mi` |
+
+### Health Probes
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `livenessProbe.httpGet.path` | Liveness probe path | `/health` |
+| `livenessProbe.initialDelaySeconds` | Liveness initial delay | `30` |
+| `readinessProbe.httpGet.path` | Readiness probe path | `/health` |
+| `readinessProbe.initialDelaySeconds` | Readiness initial delay | `20` |
+| `startupProbe.httpGet.path` | Startup probe path | `/health` |
+| `startupProbe.failureThreshold` | Startup probe max retries | `30` |
 
 ## Examples
 
 ### Using External Database
 
 ```yaml
-# custom-values.yaml
+# external-db-values.yaml
+app:
+  randomSeed: "<generate with: openssl rand -base64 32>"
+  domain: "motion.example.com"
+
 mariadb:
   enabled: false
 
@@ -239,9 +338,21 @@ externalDatabase:
 
 ```yaml
 # production-values.yaml
+app:
+  randomSeed: "<generate with: openssl rand -base64 32>"
+  domain: "motion.example.com"
+  protocol: "https"
 
-image:
-  tag: "v4.15.3"
+  smtp:
+    enabled: true
+    host: smtp.gmail.com
+    port: 587
+    username: noreply@example.com
+    encryption: "tls"
+    existingSecret: smtp-credentials
+  mail:
+    fromEmail: noreply@example.com
+    fromName: "Motion Tools"
 
 ingress:
   enabled: true
@@ -258,34 +369,24 @@ ingress:
       hosts:
         - motion.example.com
 
-motionTools:
-  apacheFqdn: motion.example.com
-  smtp:
-    enabled: true
-    host: smtp.gmail.com
-    port: 587
-    from: noreply@example.com
-    user: noreply@example.com
-    tls: true
-    auth: true
-    existingSecret: smtp-credentials
-
 persistence:
-  size: 50Gi
-  storageClass: fast-ssd
+  runtime:
+    size: 10Gi
+    storageClass: fast-ssd
+  assets:
+    size: 50Gi
+    storageClass: fast-ssd
 
-resources:
-  limits:
-    cpu: 2000m
-    memory: 2Gi
-  requests:
-    cpu: 500m
-    memory: 1Gi
+php:
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
 
 mariadb:
-  # Specify MariaDB image version
-  image:
-    tag: ""  # Uses CloudPirates chart default if not specified
   auth:
     existingSecret: db-credentials
   persistence:
@@ -299,22 +400,128 @@ networkPolicy:
 ## Limitations
 
 - **StatefulSet with Single Instance**: This chart uses a StatefulSet with exactly one replica
-- **No High Availability**: The application runs as a single StatefulSet pod
+- **No High Availability**: The application runs as a single StatefulSet pod with two containers
 - **Storage**: Uses `volumeClaimTemplates` with `ReadWriteOnce` access mode
 
 ## Upgrading
 
 ### From 0.x to 1.x
 
+Version 1.0 is a complete rewrite of the chart with several breaking changes:
+
+- **Architecture**: Monolithic Apache+PHP image replaced by a two-container sidecar (PHP-FPM + NGINX)
+- **Configuration**: `motionTools.*` values replaced by `app.*` with native environment variables
+- **Persistence**: Single volume split into separate `runtime` and `assets` volumes
+- **Security**: New required `app.randomSeed` parameter
+- **Images**: `devopsansiblede/antragsgruen` replaced by `ghcr.io/antoinetielbeke/motion-tools-php` and `motion-tools-nginx`
+
+Because of these changes, the easiest migration path is a **backup and fresh install**.
+
+#### Step 1: Backup your database
+
 ```bash
-# Backup your data first
-kubectl exec -it deployment/motion-tools -- mysqldump -h localhost -u root -p antragsgruen > backup.sql
+# If using the integrated MariaDB
+kubectl exec -it statefulset/motion-tools-mariadb -- \
+  mysqldump -u root -p antragsgruen > backup.sql
 
-# Upgrade from repository
-helm upgrade motion-tools tielbeke-motion-tools-helm/motion-tools
+# If using an external database, use your existing backup method
+```
 
-# Or upgrade from source
-helm upgrade motion-tools .
+#### Step 2: Note your current configuration
+
+```bash
+# Save your current values for reference
+helm get values motion-tools -o yaml > old-values.yaml
+```
+
+#### Step 3: Uninstall the old release
+
+```bash
+helm uninstall motion-tools
+
+# Delete the old PVCs (the data layout is incompatible with 1.x)
+kubectl delete pvc -l app.kubernetes.io/instance=motion-tools
+```
+
+#### Step 4: Generate a random seed
+
+This is a new requirement in 1.x used for application security.
+
+```bash
+openssl rand -base64 32
+```
+
+#### Step 5: Create your new values file
+
+Map your old `motionTools.*` values to the new `app.*` structure:
+
+```yaml
+# new-values.yaml
+
+app:
+  randomSeed: "<output from step 4>"
+  domain: "motion.example.com"        # was motionTools.apacheFqdn
+  protocol: "https"
+
+  # SMTP (was motionTools.smtp.*)
+  smtp:
+    enabled: true
+    host: "smtp.example.com"           # was motionTools.smtp.host
+    port: 587                          # was motionTools.smtp.port
+    username: "user@example.com"       # was motionTools.smtp.user
+    password: "smtppassword"           # was motionTools.smtp.password
+    encryption: "tls"                  # was motionTools.smtp.tls: true
+
+  mail:
+    fromEmail: "noreply@example.com"   # was motionTools.smtp.from
+
+# Database settings carry over as-is
+mariadb:
+  auth:
+    password: "your-db-password"
+```
+
+The full mapping of old to new values:
+
+| Old (0.x) | New (1.x) |
+|-----------|-----------|
+| `motionTools.apacheFqdn` | `app.domain` |
+| `motionTools.timezone` | Removed (baked into image) |
+| `motionTools.smtp.enabled` | `app.smtp.enabled` |
+| `motionTools.smtp.host` | `app.smtp.host` |
+| `motionTools.smtp.port` | `app.smtp.port` |
+| `motionTools.smtp.user` | `app.smtp.username` |
+| `motionTools.smtp.password` | `app.smtp.password` |
+| `motionTools.smtp.tls: true` | `app.smtp.encryption: "tls"` |
+| `motionTools.smtp.from` | `app.mail.fromEmail` |
+| `persistence.size` | `persistence.runtime.size` + `persistence.assets.size` |
+| `resources.*` | `php.resources.*` + `nginx.resources.*` |
+| `image.repository` | `images.php.repository` + `images.nginx.repository` |
+
+#### Step 6: Install the new version
+
+```bash
+helm install motion-tools tielbeke-motion-tools-helm/motion-tools -f new-values.yaml
+```
+
+#### Step 7: Restore your database
+
+```bash
+# Wait for MariaDB to be ready
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=mariadb --timeout=120s
+
+# Restore the backup
+kubectl exec -i statefulset/motion-tools-mariadb -- \
+  mysql -u root -p antragsgruen < backup.sql
+```
+
+#### Step 8: Verify
+
+```bash
+# Both containers (PHP-FPM + NGINX) should be running
+kubectl get pods -l app.kubernetes.io/name=motion-tools
+
+# Should show 2/2 READY
 ```
 
 ## Uninstalling
@@ -333,9 +540,16 @@ kubectl delete pvc -l app.kubernetes.io/instance=motion-tools
 
 ### Pod is not starting
 
-Check the pod logs:
+Check the pod logs for each container:
 ```bash
-kubectl logs -f deployment/motion-tools
+# PHP-FPM logs
+kubectl logs -f statefulset/motion-tools -c motion-tools-php
+
+# NGINX logs
+kubectl logs -f statefulset/motion-tools -c motion-tools-nginx
+
+# Init container logs (copies static files to shared volume)
+kubectl logs statefulset/motion-tools -c init-static-files
 ```
 
 ### Database connection issues
@@ -356,8 +570,7 @@ kubectl describe pod -l app.kubernetes.io/name=motion-tools
 
 Check PVC status:
 ```bash
-kubectl get pvc
-kubectl describe pvc motion-tools
+kubectl get pvc -l app.kubernetes.io/instance=motion-tools
 ```
 
 ## Validation
@@ -365,27 +578,28 @@ kubectl describe pvc motion-tools
 After deployment, validate that all components are working:
 
 ```bash
-# Check all pods are running
+# Check all pods are running (should show 2/2 READY for the app pod)
 kubectl get pods -l app.kubernetes.io/instance=motion-tools
 
 # Test database connectivity
-kubectl exec deployment/motion-tools -- nc -z motion-tools-mariadb 3306
+kubectl exec statefulset/motion-tools -c motion-tools-php -- nc -z motion-tools-mariadb 3306
 
-# Test application response
-kubectl exec deployment/motion-tools -- curl -s -I http://localhost/
+# Test application response via NGINX
+kubectl exec statefulset/motion-tools -c motion-tools-nginx -- curl -s -I http://localhost/health
 
 # Check application logs for errors
-kubectl logs deployment/motion-tools --tail=50
+kubectl logs statefulset/motion-tools -c motion-tools-php --tail=50
 ```
 
 Expected healthy status:
-- All pods should be in `Running` state with `1/1` ready
-- HTTP response should return `200 OK`
+- App pod should be in `Running` state with `2/2` ready (PHP-FPM + NGINX)
+- MariaDB pod should be in `Running` state with `1/1` ready
+- HTTP response to `/health` should return `200 OK`
 - No error messages in application logs related to database connectivity
 
 ## Configuration Philosophy
 
-This Helm chart follows the docker-compose approach where the application is configured primarily through environment variables (TIMEZONE, APACHE_FQDN, SMTP settings). Advanced features like caching, PDF rendering, and background jobs are configured through the application's web interface or config.json file, which the Docker image manages internally.
+This Helm chart follows 12-factor app principles. The application is configured entirely through environment variables (`APP_DOMAIN`, `APP_PROTOCOL`, `MAILER_DSN`, etc.) which are derived from the `app.*` section in your values file. The two-container sidecar design separates PHP-FPM (application logic) from NGINX (HTTP serving), allowing independent resource tuning and clearer separation of concerns.
 
 ## Support
 
@@ -399,7 +613,7 @@ This Helm chart is provided as-is. Motion Tools (Antragsgrün) is licensed under
 
 ## Chart Repository Hosting
 
-This chart is hosted on Cloudsmith, an European artifact repository, for easy distribution and installation.
+This chart is hosted on Cloudsmith, a European artifact repository, for easy distribution and installation.
 
 - **Repository URL**: `https://dl.cloudsmith.io/public/tielbeke/tielbeke/helm/charts/`
 
