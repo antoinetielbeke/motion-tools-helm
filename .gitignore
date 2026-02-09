@@ -1,1 +1,39 @@
-motion-tools-*
+# Helm packages
+*.tgz
+
+# Development and editor files
+.DS_Store
+*.swp
+*.bak
+*.tmp
+*.orig
+*~
+.project
+.idea/
+*.tmproj
+.vscode/
+*.code-workspace
+
+# Environment and secrets
+.env
+.env.*
+*.key
+*.pem
+secrets/
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+dist/
+build/
+
+# Dependencies
+node_modules/
+vendor/
+
+# Local development files
+kind-config.yaml
+values-dev.yaml
+values-local*.yaml

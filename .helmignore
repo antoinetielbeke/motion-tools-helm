@@ -38,9 +38,9 @@ AGENTS.md
 docs/
 examples/
 
-# Testing
-tests/
-test/
+# Testing (exclude top-level test dirs, but not templates/tests/ which Helm needs)
+/tests
+/test
 *.test.js
 *.test.ts
 *.spec.js
