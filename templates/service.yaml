@@ -23,9 +23,6 @@ spec:
   loadBalancerSourceRanges:
     {{- toYaml .Values.service.loadBalancerSourceRanges | nindent 4 }}
   {{- end }}
-  {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePort }}
-  nodePort: {{ .Values.service.nodePort }}
-  {{- end }}
   {{- if .Values.service.externalTrafficPolicy }}
   externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy }}
   {{- end }}
