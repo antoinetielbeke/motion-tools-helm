@@ -8,6 +8,7 @@ A Helm chart for deploying [Motion Tools (Antragsgrün)](https://github.com/Cato
 
 - **Sidecar Architecture**: Two-container pod with PHP-FPM and NGINX for separation of concerns
 - **12-Factor Configuration**: All application settings via environment variables
+- **SSO / OIDC Authentication**: Built-in OpenID Connect support (Logto, Keycloak, Auth0, etc.)
 - **Database Management**: Integrated MariaDB or external database support
 - **Caching**: Optional Valkey (Redis-compatible) integration
 - **Security**: Built-in security configurations and network policies
@@ -218,6 +219,36 @@ Used when `app.multisiteMode` is `false`.
 | `app.extraEnvVars` | Additional environment variables for the PHP-FPM container | `[]` |
 | `app.extraEnvFrom` | Additional envFrom sources (ConfigMaps/Secrets) | `[]` |
 
+### OIDC / SSO Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `app.oidc.enabled` | Enable OIDC Single Sign-On | `false` |
+| `app.oidc.clientId` | OIDC client ID (stored in secret) | `""` |
+| `app.oidc.clientSecret` | OIDC client secret (stored in secret) | `""` |
+| `app.oidc.issuer` | OIDC issuer URL (e.g. `https://auth.example.com/oidc`) | `""` |
+| `app.oidc.existingSecret` | Use an existing secret for OIDC credentials | `""` |
+| `app.oidc.clientIdSecretKey` | Key in secret containing client ID | `"oidc-client-id"` |
+| `app.oidc.clientSecretSecretKey` | Key in secret containing client secret | `"oidc-client-secret"` |
+| `app.oidc.redirectUri` | OAuth2 redirect URI | `""` (auto: `{protocol}://{domain}/sso-callback`) |
+| `app.oidc.scopes` | Comma-separated OIDC scopes | `""` (default: `openid,profile,email`) |
+| `app.oidc.pkce` | Enable PKCE | `""` (default: `true`) |
+| `app.oidc.singleLogout` | Enable single logout | `""` (default: `true`) |
+| `app.oidc.syncGroups` | Sync groups from identity provider | `""` (default: `false`) |
+| `app.oidc.discovery` | Auto-fetch endpoints from `.well-known/openid-configuration` | `""` (default: `true`) |
+| `app.oidc.linkByEmail` | Link existing local accounts by email on first SSO login (only safe with verified-email IdPs) | `""` (default: `false`) |
+| `app.oidc.urlAuthorize` | Authorization endpoint (manual override) | `""` |
+| `app.oidc.urlToken` | Token endpoint (manual override) | `""` |
+| `app.oidc.urlUserinfo` | UserInfo endpoint (manual override) | `""` |
+| `app.oidc.urlLogout` | Logout endpoint (manual override) | `""` |
+| `app.oidc.attrEmail` | Claim name for email | `""` (default: `email`) |
+| `app.oidc.attrUsername` | Claim name for username | `""` (default: `preferred_username`) |
+| `app.oidc.attrGivenName` | Claim name for given name | `""` (default: `given_name`) |
+| `app.oidc.attrFamilyName` | Claim name for family name | `""` (default: `family_name`) |
+| `app.oidc.attrGroups` | Claim name for groups | `""` (default: `groups`) |
+| `app.oidc.groupMapping` | JSON mapping of IdP groups to app groups (stored in secret) | `""` |
+| `app.oidc.groupMappingSecretKey` | Key in secret containing group mapping | `"oidc-group-mapping"` |
+
 ### NGINX Configuration
 
 | Parameter | Description | Default |
@@ -395,6 +426,46 @@ mariadb:
 
 networkPolicy:
   enabled: true
+```
+
+### Using OIDC / SSO with Logto
+
+```yaml
+# oidc-values.yaml
+app:
+  randomSeed: "<generate with: openssl rand -base64 32>"
+  domain: "motion.example.com"
+  protocol: "https"
+
+  oidc:
+    enabled: true
+    issuer: "https://auth.example.com/oidc"
+    # Option 1: Inline credentials (for dev/testing)
+    clientId: "your-client-id"
+    clientSecret: "your-client-secret"
+
+    # Option 2: Use a pre-created Kubernetes secret (recommended for production)
+    # existingSecret: "motion-tools-oidc"
+    # clientIdSecretKey: "oidc-client-id"
+    # clientSecretSecretKey: "oidc-client-secret"
+```
+
+To use an existing secret in production, create the secret first:
+
+```bash
+kubectl create secret generic motion-tools-oidc \
+  --from-literal=oidc-client-id=your-client-id \
+  --from-literal=oidc-client-secret=your-client-secret
+```
+
+Then reference it in your values:
+
+```yaml
+app:
+  oidc:
+    enabled: true
+    issuer: "https://auth.example.com/oidc"
+    existingSecret: "motion-tools-oidc"
 ```
 
 ## Limitations
@@ -621,6 +692,7 @@ This chart is hosted on Cloudsmith, a European artifact repository, for easy dis
 
 The following features are planned for future releases of this Helm chart:
 
+- [x] OIDC / SSO authentication support via Helm values
 - [ ] Make config.json configurable via Helm values
 
 ## Contributing

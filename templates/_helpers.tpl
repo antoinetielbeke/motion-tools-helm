@@ -199,3 +199,14 @@ SMTP secret name
 {{- printf "%s-app" (include "motion-tools.fullname" .) -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+OIDC secret name
+*/}}
+{{- define "motion-tools.oidcSecretName" -}}
+{{- if .Values.app.oidc.existingSecret -}}
+{{- .Values.app.oidc.existingSecret -}}
+{{- else -}}
+{{- printf "%s-app" (include "motion-tools.fullname" .) -}}
+{{- end -}}
+{{- end -}}
