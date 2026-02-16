@@ -236,6 +236,7 @@ Used when `app.multisiteMode` is `false`.
 | `app.oidc.singleLogout` | Enable single logout | `""` (default: `true`) |
 | `app.oidc.syncGroups` | Sync groups from identity provider | `""` (default: `false`) |
 | `app.oidc.discovery` | Auto-fetch endpoints from `.well-known/openid-configuration` | `""` (default: `true`) |
+| `app.oidc.linkByEmail` | Link existing local accounts by email on first SSO login (only safe with verified-email IdPs) | `""` (default: `false`) |
 | `app.oidc.urlAuthorize` | Authorization endpoint (manual override) | `""` |
 | `app.oidc.urlToken` | Token endpoint (manual override) | `""` |
 | `app.oidc.urlUserinfo` | UserInfo endpoint (manual override) | `""` |

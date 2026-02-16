@@ -185,6 +185,9 @@ app:
     singleLogout: ""           # Default: "true"
     syncGroups: ""             # Default: "false"
     discovery: ""              # Default: "true"
+    # Link existing local accounts by email on first SSO login (migration helper).
+    # Only safe when the IdP guarantees verified email addresses.
+    linkByEmail: ""            # Default: "false"
     # Manual endpoint overrides (only needed if discovery is disabled):
     urlAuthorize: ""
     urlToken: ""

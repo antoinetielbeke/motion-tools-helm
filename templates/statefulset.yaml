@@ -206,6 +206,10 @@ spec:
             - name: OIDC_DISCOVERY
               value: {{ .Values.app.oidc.discovery | quote }}
             {{- end }}
+            {{- if .Values.app.oidc.linkByEmail }}
+            - name: OIDC_LINK_BY_EMAIL
+              value: {{ .Values.app.oidc.linkByEmail | quote }}
+            {{- end }}
             {{- if .Values.app.oidc.urlAuthorize }}
             - name: OIDC_URL_AUTHORIZE
               value: {{ .Values.app.oidc.urlAuthorize | quote }}
