@@ -166,6 +166,40 @@ app:
     fromEmail: ""
     fromName: ""
 
+  # OIDC / SSO Configuration
+  # Enables Single Sign-On via OpenID Connect (e.g. Logto, Keycloak, Auth0)
+  oidc:
+    enabled: false
+    # Required when enabled:
+    clientId: ""
+    clientSecret: ""
+    issuer: ""  # e.g. "https://auth.example.com/oidc"
+    # Use existing secret for OIDC credentials instead of inline values
+    existingSecret: ""
+    clientIdSecretKey: "oidc-client-id"
+    clientSecretSecretKey: "oidc-client-secret"
+    # Optional settings (sensible defaults provided by the container):
+    redirectUri: ""            # Default: ${APP_PROTOCOL}://${APP_DOMAIN}/sso-callback
+    scopes: ""                 # Default: "openid,profile,email"
+    pkce: ""                   # Default: "true"
+    singleLogout: ""           # Default: "true"
+    syncGroups: ""             # Default: "false"
+    discovery: ""              # Default: "true"
+    # Manual endpoint overrides (only needed if discovery is disabled):
+    urlAuthorize: ""
+    urlToken: ""
+    urlUserinfo: ""
+    urlLogout: ""
+    # Attribute mapping overrides:
+    attrEmail: ""              # Default: "email"
+    attrUsername: ""            # Default: "preferred_username"
+    attrGivenName: ""          # Default: "given_name"
+    attrFamilyName: ""         # Default: "family_name"
+    attrGroups: ""             # Default: "groups"
+    # Group mapping (JSON string, sensitive - stored in secret):
+    groupMapping: ""
+    groupMappingSecretKey: "oidc-group-mapping"
+
   # Additional environment variables for the PHP-FPM container
   extraEnvVars: []
   # - name: CUSTOM_VAR

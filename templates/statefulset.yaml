@@ -166,6 +166,91 @@ spec:
               value: {{ .Values.app.mail.fromName | quote }}
             {{- end }}
 
+            {{- if .Values.app.oidc.enabled }}
+            # OIDC / SSO Configuration
+            - name: OIDC_ENABLED
+              value: "true"
+            - name: OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.oidcSecretName" . }}
+                  key: {{ .Values.app.oidc.clientIdSecretKey | default "oidc-client-id" }}
+            - name: OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.oidcSecretName" . }}
+                  key: {{ .Values.app.oidc.clientSecretSecretKey | default "oidc-client-secret" }}
+            - name: OIDC_ISSUER
+              value: {{ .Values.app.oidc.issuer | quote }}
+            {{- if .Values.app.oidc.redirectUri }}
+            - name: OIDC_REDIRECT_URI
+              value: {{ .Values.app.oidc.redirectUri | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.scopes }}
+            - name: OIDC_SCOPES
+              value: {{ .Values.app.oidc.scopes | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.pkce }}
+            - name: OIDC_PKCE
+              value: {{ .Values.app.oidc.pkce | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.singleLogout }}
+            - name: OIDC_SINGLE_LOGOUT
+              value: {{ .Values.app.oidc.singleLogout | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.syncGroups }}
+            - name: OIDC_SYNC_GROUPS
+              value: {{ .Values.app.oidc.syncGroups | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.discovery }}
+            - name: OIDC_DISCOVERY
+              value: {{ .Values.app.oidc.discovery | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.urlAuthorize }}
+            - name: OIDC_URL_AUTHORIZE
+              value: {{ .Values.app.oidc.urlAuthorize | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.urlToken }}
+            - name: OIDC_URL_TOKEN
+              value: {{ .Values.app.oidc.urlToken | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.urlUserinfo }}
+            - name: OIDC_URL_USERINFO
+              value: {{ .Values.app.oidc.urlUserinfo | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.urlLogout }}
+            - name: OIDC_URL_LOGOUT
+              value: {{ .Values.app.oidc.urlLogout | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.attrEmail }}
+            - name: OIDC_ATTR_EMAIL
+              value: {{ .Values.app.oidc.attrEmail | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.attrUsername }}
+            - name: OIDC_ATTR_USERNAME
+              value: {{ .Values.app.oidc.attrUsername | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.attrGivenName }}
+            - name: OIDC_ATTR_GIVEN_NAME
+              value: {{ .Values.app.oidc.attrGivenName | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.attrFamilyName }}
+            - name: OIDC_ATTR_FAMILY_NAME
+              value: {{ .Values.app.oidc.attrFamilyName | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.attrGroups }}
+            - name: OIDC_ATTR_GROUPS
+              value: {{ .Values.app.oidc.attrGroups | quote }}
+            {{- end }}
+            {{- if .Values.app.oidc.groupMapping }}
+            - name: OIDC_GROUP_MAPPING
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "motion-tools.oidcSecretName" . }}
+                  key: {{ .Values.app.oidc.groupMappingSecretKey | default "oidc-group-mapping" }}
+            {{- end }}
+            {{- end }}
+
             {{- with .Values.app.extraEnvVars }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
