@@ -3,7 +3,7 @@ name: motion-tools
 description: A Helm chart for Motion Tools (Antragsgruen) - an online tool for NGOs and political parties to manage motions, resolutions and amendments
 type: application
 version: 1.1.0
-appVersion: "4.17.0-volt.6"
+appVersion: "4.17.0-volt.7"
 kubeVersion: ">=1.19.0-0"
 keywords:
   - motion
@@ -30,12 +30,12 @@ annotations:
       url: https://github.com/CatoTH/antragsgruen/issues
   artifacthub.io/images: |
     - name: motion-tools-php
-      image: ghcr.io/antoinetielbeke/motion-tools-php:4.17.0-volt.6
+      image: ghcr.io/antoinetielbeke/motion-tools-php:4.17.0-volt.7
       platforms:
         - linux/amd64
         - linux/arm64
     - name: motion-tools-nginx
-      image: ghcr.io/antoinetielbeke/motion-tools-nginx:4.17.0-volt.6
+      image: ghcr.io/antoinetielbeke/motion-tools-nginx:4.17.0-volt.7
       platforms:
         - linux/amd64
         - linux/arm64
@@ -45,6 +45,8 @@ annotations:
   artifacthub.io/changes: |
     - kind: added
       description: "OIDC/SSO authentication support via environment variables (Logto, Keycloak, etc.)"
+    - kind: added
+      description: "Opt-in email-based account linking for SSO migration (linkByEmail)"
     - kind: fixed
       description: "Removed invalid top-level nodePort from Service spec"
 home: https://motion.tools
