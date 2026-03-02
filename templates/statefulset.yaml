@@ -342,6 +342,9 @@ spec:
             - name: ROOT_REDIRECT
               value: {{ .Values.nginx.rootRedirect | quote }}
             {{- end }}
+            {{- with .Values.nginx.extraEnvVars }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
 
           {{- if .Values.livenessProbe }}
           livenessProbe:

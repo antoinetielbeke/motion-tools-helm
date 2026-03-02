@@ -225,6 +225,10 @@ nginx:
     connectTimeout: "60s"
     sendTimeout: "300s"
     readTimeout: "300s"
+  # Additional environment variables for the NGINX container
+  extraEnvVars: []
+  # - name: OTEL_EXPORTER_ENDPOINT
+  #   value: "signoz-otel-collector.signoz.svc.cluster.local:4317"
   resources:
     limits:
       cpu: 500m
