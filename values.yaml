@@ -33,11 +33,9 @@ serviceAccount:
 podAnnotations: {}
 podLabels: {}
 
-podSecurityContext: {}
-  # fsGroup: 33
-  # runAsUser: 33
-  # runAsGroup: 33
-  # runAsNonRoot: true
+podSecurityContext:
+  # fsGroup must match www-data GID (82 on Alpine) so PVCs are writable by PHP-FPM
+  fsGroup: 82
 
 securityContext: {}
   # capabilities:
