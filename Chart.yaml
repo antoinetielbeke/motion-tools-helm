@@ -2,7 +2,7 @@ apiVersion: v2
 name: motion-tools
 description: A Helm chart for Motion Tools (Antragsgruen) - an online tool for NGOs and political parties to manage motions, resolutions and amendments
 type: application
-version: 1.2.1
+version: 1.3.0
 appVersion: "4.17.0-volt.11"
 kubeVersion: ">=1.19.0-0"
 keywords:
@@ -43,8 +43,12 @@ annotations:
     - name: Antoine Tielbeke
       email: antoine@tielbeke.io
   artifacthub.io/changes: |
+    - kind: added
+      description: "Configurable PHP-FPM pool settings via Helm values with extraConfig escape hatch"
     - kind: fixed
-      description: "Fix composer install GitHub API auth failure in Docker build"
+      description: "Set fsGroup to 82 (www-data) so runtime/assets PVCs are writable by PHP-FPM"
+    - kind: removed
+      description: "Remove unused values (debug, service.targetPort, top-level annotations) and dead configmap templates"
 home: https://motion.tools
 sources:
   - https://github.com/CatoTH/antragsgruen
