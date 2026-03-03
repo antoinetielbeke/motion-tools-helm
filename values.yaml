@@ -49,7 +49,6 @@ securityContext: {}
 service:
   type: ClusterIP
   port: 80
-  targetPort: 80
   annotations: {}
   labels: {}
 
@@ -237,7 +236,7 @@ nginx:
       cpu: 100m
       memory: 128Mi
 
-# PHP-FPM container resources
+# PHP-FPM container configuration
 php:
   resources:
     limits:
@@ -246,6 +245,31 @@ php:
     requests:
       cpu: 250m
       memory: 512Mi
+  # PHP-FPM pool settings (mounted as /usr/local/etc/php-fpm.d/zz-custom-pool.conf)
+  fpm:
+    # Process manager: static, dynamic, or ondemand
+    pm: dynamic
+    maxChildren: 15
+    startServers: 5
+    minSpareServers: 2
+    maxSpareServers: 8
+    maxRequests: 500
+    # PHP 8.1+ — max workers to spawn per second under load
+    maxSpawnRate: 32
+    processIdleTimeout: "10s"
+    requestTerminateTimeout: "300s"
+    # Log slow requests (0 = disabled)
+    requestSlowlogTimeout: "0"
+    # IMPORTANT: must be false for env-var-based config to work
+    clearEnv: false
+    catchWorkersOutput: true
+    decorateWorkersOutput: false
+    # Arbitrary extra pool directives (key: value)
+    extraConfig: {}
+    # Example:
+    #   rlimit_files: "65536"
+    #   security.limit_extensions: ".php"
+    #   access.log: "/proc/self/fd/2"
 
 # Valkey configuration (Redis-compatible in-memory data store) - CloudPirates chart
 valkey:
@@ -395,11 +419,5 @@ updateStrategy:
 # Revision history limit
 revisionHistoryLimit: 10
 
-# Enable debug mode
-debug: false
-
 # Additional labels
 labels: {}
-
-# Additional annotations
-annotations: {}

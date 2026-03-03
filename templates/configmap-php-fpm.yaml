@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "motion-tools.fullname" . }}-php-fpm
+  labels:
+    {{- include "motion-tools.labels" . | nindent 4 }}
+data:
+  zz-custom-pool.conf: |
+    [www]
+    pm = {{ .Values.php.fpm.pm | default "dynamic" }}
+    pm.max_children = {{ .Values.php.fpm.maxChildren | default 15 }}
+    pm.start_servers = {{ .Values.php.fpm.startServers | default 5 }}
+    pm.min_spare_servers = {{ .Values.php.fpm.minSpareServers | default 2 }}
+    pm.max_spare_servers = {{ .Values.php.fpm.maxSpareServers | default 8 }}
+    pm.max_requests = {{ .Values.php.fpm.maxRequests | default 500 }}
+    pm.max_spawn_rate = {{ .Values.php.fpm.maxSpawnRate | default 32 }}
+    pm.process_idle_timeout = {{ .Values.php.fpm.processIdleTimeout | default "10s" }}
+    request_terminate_timeout = {{ .Values.php.fpm.requestTerminateTimeout | default "300s" }}
+    request_slowlog_timeout = {{ .Values.php.fpm.requestSlowlogTimeout | default "0" }}
+    {{- if ne (toString .Values.php.fpm.requestSlowlogTimeout | default "0") "0" }}
+    slowlog = /proc/self/fd/2
+    {{- end }}
+    clear_env = {{ ternary "yes" "no" .Values.php.fpm.clearEnv }}
+    catch_workers_output = {{ ternary "yes" "no" .Values.php.fpm.catchWorkersOutput }}
+    decorate_workers_output = {{ ternary "yes" "no" .Values.php.fpm.decorateWorkersOutput }}
+    {{- range $key, $value := .Values.php.fpm.extraConfig }}
+    {{ $key }} = {{ $value }}
+    {{- end }}

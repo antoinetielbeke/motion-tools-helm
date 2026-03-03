@@ -22,6 +22,7 @@ spec:
     metadata:
       annotations:
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        checksum/php-fpm: {{ include (print $.Template.BasePath "/configmap-php-fpm.yaml") . | sha256sum }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -294,6 +295,10 @@ spec:
           {{- end }}
 
           volumeMounts:
+            - name: php-fpm-pool
+              mountPath: /usr/local/etc/php-fpm.d/zz-custom-pool.conf
+              subPath: zz-custom-pool.conf
+              readOnly: true
             {{- if .Values.persistence.runtime.enabled }}
             - name: runtime
               mountPath: /var/www/html/runtime
@@ -383,6 +388,9 @@ spec:
       volumes:
         - name: static-files
           emptyDir: {}
+        - name: php-fpm-pool
+          configMap:
+            name: {{ include "motion-tools.fullname" . }}-php-fpm
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
